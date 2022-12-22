@@ -1,6 +1,7 @@
 package differ
 
 import (
+	"github.com/hashicorp/terraform/internal/plans"
 	"github.com/zclconf/go-cty/cty"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
@@ -46,6 +47,11 @@ func (v Value) computeChangeForType(ctyType cty.Type) change.Change {
 		return v.computeAttributeChangeAsList(ctyType.ElementType())
 	case ctyType.IsSetType():
 		return v.computeAttributeChangeAsSet(ctyType.ElementType())
+	case ctyType.IsTupleType():
+		// TODO()
+		return change.New(nil, plans.NoOp, false)
+	case ctyType == cty.DynamicPseudoType:
+		return change.New(nil, plans.NoOp, false)
 	default:
 		panic("unrecognized type: " + ctyType.FriendlyName())
 	}

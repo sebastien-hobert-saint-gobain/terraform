@@ -81,7 +81,7 @@ func TestRenderers(t *testing.T) {
 				renderer: Sensitive("0", "1", true, true),
 				action:   plans.Update,
 			},
-			expected: "(sensitive)",
+			expected: "(sensitive value)",
 		},
 		"sensitive_update_replace": {
 			change: Change{
@@ -89,7 +89,7 @@ func TestRenderers(t *testing.T) {
 				action:   plans.Update,
 				replace:  true,
 			},
-			expected: "(sensitive) # forces replacement",
+			expected: "(sensitive value) # forces replacement",
 		},
 		"computed_create": {
 			change: Change{
@@ -280,7 +280,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      + attribute_one = (sensitive)
+      + attribute_one = (sensitive value)
     }
 `,
 		},
@@ -296,7 +296,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      ~ attribute_one = (sensitive)
+      ~ attribute_one = (sensitive value)
     }
 `,
 		},
@@ -312,7 +312,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      - attribute_one = (sensitive)
+      - attribute_one = (sensitive value)
     }
 `,
 		},
@@ -500,7 +500,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      + "element_one" = (sensitive)
+      + "element_one" = (sensitive value)
     }
 `,
 		},
@@ -516,7 +516,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      ~ "element_one" = (sensitive)
+      ~ "element_one" = (sensitive value)
     }
 `,
 		},
@@ -534,7 +534,7 @@ func TestRenderers(t *testing.T) {
 {
       # Warning: this attribute value will no longer be marked as sensitive
       # after applying this change. The value is unchanged.
-      ~ "element_one" = (sensitive)
+      ~ "element_one" = (sensitive value)
     }
 `,
 		},
@@ -550,7 +550,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      - "element_one" = (sensitive) -> null
+      - "element_one" = (sensitive value) -> null
     }
 `,
 		},
@@ -802,7 +802,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 [
-      + (sensitive),
+      + (sensitive value),
     ]
 `,
 		},
@@ -818,7 +818,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 [
-      - (sensitive),
+      - (sensitive value),
     ]
 `,
 		},
@@ -834,7 +834,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 [
-      ~ (sensitive),
+      ~ (sensitive value),
     ]
 `,
 		},
@@ -852,7 +852,7 @@ func TestRenderers(t *testing.T) {
 [
       # Warning: this attribute value will be marked as sensitive and will not
       # display in UI output after applying this change. The value is unchanged.
-      ~ (sensitive),
+      ~ (sensitive value),
     ]
 `,
 		},
@@ -1068,7 +1068,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 [
-      + (sensitive),
+      + (sensitive value),
     ]
 `,
 		},
@@ -1084,7 +1084,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 [
-      - (sensitive),
+      - (sensitive value),
     ]
 `,
 		},
@@ -1100,7 +1100,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 [
-      ~ (sensitive),
+      ~ (sensitive value),
     ]
 `,
 		},
@@ -1118,7 +1118,7 @@ func TestRenderers(t *testing.T) {
 [
       # Warning: this attribute value will be marked as sensitive and will not
       # display in UI output after applying this change.
-      ~ (sensitive),
+      ~ (sensitive value),
     ]
 `,
 		},

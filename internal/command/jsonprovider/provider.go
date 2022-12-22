@@ -31,6 +31,16 @@ func newProviders() *providers {
 	}
 }
 
+func MarshalForRenderer(s *terraform.Schemas) map[string]*Provider {
+	providers := newProviders()
+
+	for k, v := range s.Providers {
+		providers.Schemas[k.String()] = marshalProvider(v)
+	}
+
+	return providers.Schemas
+}
+
 func Marshal(s *terraform.Schemas) ([]byte, error) {
 	providers := newProviders()
 

@@ -12,6 +12,7 @@ import (
 var (
 	importantAttributes = []string{
 		"id",
+		"name",
 	}
 )
 
@@ -51,30 +52,17 @@ func (renderer blockRenderer) Render(change Change, indent int, opts RenderOpts)
 	unchangedAttributes := 0
 	unchangedBlocks := 0
 
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("{%s\n", change.forcesReplacement()))
-	for _, importantKey := range importantAttributes {
-		if attribute, ok := renderer.attributes[importantKey]; ok {
-			if attribute.action == plans.NoOp {
-				buf.WriteString(fmt.Sprintf("%s%s %-*s = %s\n", change.indent(indent+1), attribute.emptySymbol(), renderer.maximumKeyLen, importantKey, attribute.Render(indent+1, opts)))
-				continue
-			}
-			buf.WriteString(fmt.Sprintf("%s%s %-*s = %s\n", change.indent(indent+1), format.DiffActionSymbol(attribute.action), renderer.maximumKeyLen, importantKey, attribute.Render(indent+1, opts)))
-		}
-	}
-
 	var attributeKeys []string
 	for key := range renderer.attributes {
 		attributeKeys = append(attributeKeys, key)
 	}
 	sort.Strings(attributeKeys)
 
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("{%s\n", change.forcesReplacement()))
 	for _, key := range attributeKeys {
-		if importantAttribute(key) {
-			continue
-		}
 		attribute := renderer.attributes[key]
-		if attribute.action == plans.NoOp && !opts.showUnchangedChildren {
+		if !importantAttribute(key) && (attribute.action == plans.NoOp && !opts.showUnchangedChildren) {
 			unchangedAttributes++
 			continue
 		}
@@ -82,7 +70,12 @@ func (renderer blockRenderer) Render(change Change, indent int, opts RenderOpts)
 		for _, warning := range attribute.Warnings(indent + 1) {
 			buf.WriteString(fmt.Sprintf("%s%s\n", change.indent(indent+1), warning))
 		}
-		buf.WriteString(fmt.Sprintf("%s%s %-*s = %s\n", change.indent(indent+1), format.DiffActionSymbol(attribute.action), renderer.maximumKeyLen, key, attribute.Render(indent+1, opts)))
+
+		if attribute.action == plans.NoOp {
+			buf.WriteString(fmt.Sprintf("%s%s %-*s = %s\n", change.indent(indent+1), change.emptySymbol(), renderer.maximumKeyLen, key, attribute.Render(indent+1, opts)))
+		} else {
+			buf.WriteString(fmt.Sprintf("%s%s %-*s = %s\n", change.indent(indent+1), format.DiffActionSymbol(attribute.action), renderer.maximumKeyLen, key, attribute.Render(indent+1, opts)))
+		}
 	}
 
 	if unchangedAttributes > 0 {
@@ -95,6 +88,7 @@ func (renderer blockRenderer) Render(change Change, indent int, opts RenderOpts)
 	}
 	sort.Strings(blockKeys)
 
+	printedAnyBlocks := false
 	for _, key := range blockKeys {
 		blocks := renderer.blocks[key]
 
@@ -108,6 +102,7 @@ func (renderer blockRenderer) Render(change Change, indent int, opts RenderOpts)
 			if !foundChangedBlock && len(renderer.attributes) > 0 {
 				buf.WriteString("\n")
 				foundChangedBlock = true
+				printedAnyBlocks = true
 			}
 
 			for _, warning := range block.Warnings(indent + 1) {
@@ -118,6 +113,9 @@ func (renderer blockRenderer) Render(change Change, indent int, opts RenderOpts)
 	}
 
 	if unchangedBlocks > 0 {
+		if !printedAnyBlocks {
+			buf.WriteString("\n")
+		}
 		buf.WriteString(fmt.Sprintf("%s%s %s\n", change.indent(indent+1), change.emptySymbol(), change.unchanged("block", unchangedBlocks)))
 	}
 
