@@ -1,11 +1,9 @@
 package cloud
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -309,31 +307,9 @@ in order to capture the filesystem context the remote workspace expects:
 		return r, err
 	}
 
-	logs, err := b.client.Plans.Logs(stopCtx, r.Plan.ID)
+	err = b.renderPlan(stopCtx, r)
 	if err != nil {
-		return r, generalError("Failed to retrieve logs", err)
-	}
-	reader := bufio.NewReaderSize(logs, 64*1024)
-
-	if b.CLI != nil {
-		for next := true; next; {
-			var l, line []byte
-
-			for isPrefix := true; isPrefix; {
-				l, isPrefix, err = reader.ReadLine()
-				if err != nil {
-					if err != io.EOF {
-						return r, generalError("Failed to read logs", err)
-					}
-					next = false
-				}
-				line = append(line, l...)
-			}
-
-			if next || len(line) > 0 {
-				b.CLI.Output(b.Colorize().Color(string(line)))
-			}
-		}
+		return r, err
 	}
 
 	// Retrieve the run to get its current status.

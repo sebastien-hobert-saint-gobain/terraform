@@ -22,6 +22,7 @@ import (
 	"github.com/zclconf/go-cty/cty/gocty"
 
 	"github.com/hashicorp/terraform/internal/backend"
+	"github.com/hashicorp/terraform/internal/command/jsonformat"
 	"github.com/hashicorp/terraform/internal/configs/configschema"
 	"github.com/hashicorp/terraform/internal/plans"
 	"github.com/hashicorp/terraform/internal/states/statemgr"
@@ -72,6 +73,9 @@ type Cloud struct {
 
 	// services is used for service discovery
 	services *disco.Disco
+
+	// renderer is used for rendering JSON plan output and streamed logs.
+	renderer *jsonformat.Renderer
 
 	// local allows local operations, where Terraform Cloud serves as a state storage backend.
 	local backend.Enhanced

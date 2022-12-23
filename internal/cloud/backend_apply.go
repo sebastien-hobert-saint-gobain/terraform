@@ -1,9 +1,7 @@
 package cloud
 
 import (
-	"bufio"
 	"context"
-	"io"
 	"log"
 
 	tfe "github.com/hashicorp/go-tfe"
@@ -151,38 +149,9 @@ func (b *Cloud) opApply(stopCtx, cancelCtx context.Context, op *backend.Operatio
 		return r, err
 	}
 
-	logs, err := b.client.Applies.Logs(stopCtx, r.Apply.ID)
+	err = b.renderApply(stopCtx, r)
 	if err != nil {
-		return r, generalError("Failed to retrieve logs", err)
-	}
-	reader := bufio.NewReaderSize(logs, 64*1024)
-
-	if b.CLI != nil {
-		skip := 0
-		for next := true; next; {
-			var l, line []byte
-
-			for isPrefix := true; isPrefix; {
-				l, isPrefix, err = reader.ReadLine()
-				if err != nil {
-					if err != io.EOF {
-						return r, generalError("Failed to read logs", err)
-					}
-					next = false
-				}
-				line = append(line, l...)
-			}
-
-			// Skip the first 3 lines to prevent duplicate output.
-			if skip < 3 {
-				skip++
-				continue
-			}
-
-			if next || len(line) > 0 {
-				b.CLI.Output(b.Colorize().Color(string(line)))
-			}
-		}
+		return r, err
 	}
 
 	return r, nil
