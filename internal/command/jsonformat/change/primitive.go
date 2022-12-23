@@ -24,23 +24,23 @@ type primitiveRenderer struct {
 	t      cty.Type
 }
 
-func (renderer primitiveRenderer) Render(result Change, indent int, opts RenderOpts) string {
-	beforeValue := renderPrimitiveValue(renderer.before, renderer.t, result.indent(indent+1))
-	afterValue := renderPrimitiveValue(renderer.after, renderer.t, result.indent(indent+1))
+func (renderer primitiveRenderer) Render(change Change, indent int, opts RenderOpts) string {
+	beforeValue := renderPrimitiveValue(change, renderer.before, renderer.t, indent)
+	afterValue := renderPrimitiveValue(change, renderer.after, renderer.t, indent)
 
-	switch result.action {
+	switch change.action {
 	case plans.Create:
-		return fmt.Sprintf("%s%s", afterValue, result.forcesReplacement())
+		return fmt.Sprintf("%s%s", afterValue, change.forcesReplacement())
 	case plans.Delete:
-		return fmt.Sprintf("%s%s%s", beforeValue, result.nullSuffix(opts.overrideNullSuffix), result.forcesReplacement())
+		return fmt.Sprintf("%s%s%s", beforeValue, change.nullSuffix(opts.overrideNullSuffix), change.forcesReplacement())
 	case plans.NoOp:
-		return fmt.Sprintf("%s%s", beforeValue, result.forcesReplacement())
+		return fmt.Sprintf("%s%s", beforeValue, change.forcesReplacement())
 	default:
-		return fmt.Sprintf("%s [yellow]->[reset] %s%s", beforeValue, afterValue, result.forcesReplacement())
+		return fmt.Sprintf("%s [yellow]->[reset] %s%s", beforeValue, afterValue, change.forcesReplacement())
 	}
 }
 
-func renderPrimitiveValue(value interface{}, t cty.Type, indent string) string {
+func renderPrimitiveValue(change Change, value interface{}, t cty.Type, indent int) string {
 	switch value.(type) {
 	case nil:
 		return "[dark_gray]null[reset]"
@@ -50,7 +50,7 @@ func renderPrimitiveValue(value interface{}, t cty.Type, indent string) string {
 	case t == cty.String:
 		str := value.(string)
 		if strings.Contains(str, "\n") {
-			return fmt.Sprintf("<<-\n%s\nEOT", strings.ReplaceAll(str, "\n", fmt.Sprintf("\n%s", indent)))
+			return fmt.Sprintf("<<-EOT\n%s%s\n%sEOT", change.indent(indent+1), strings.ReplaceAll(str, "\n", fmt.Sprintf("\n%s", change.indent(indent+1))), change.indent(indent))
 		} else {
 			return fmt.Sprintf("\"%s\"", str)
 		}

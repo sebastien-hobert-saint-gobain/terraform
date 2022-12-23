@@ -73,6 +73,42 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: "0 -> 1 # forces replacement",
 		},
+		"multiline_string_create": {
+			change: Change{
+				renderer: Primitive(nil, "hello\nworld", cty.String),
+				action:   plans.Create,
+				replace:  false,
+			},
+			expected: `<<-EOT
+    hello
+    world
+EOT`,
+		},
+		"multiline_string_delete": {
+			change: Change{
+				renderer: Primitive("hello\nworld", nil, cty.String),
+				action:   plans.Delete,
+				replace:  false,
+			},
+			expected: `<<-EOT
+    hello
+    world
+EOT -> null`,
+		},
+		"multiline_string_update": {
+			change: Change{
+				renderer: Primitive("hello\nworld", "goodbye\nworld", cty.String),
+				action:   plans.Update,
+				replace:  false,
+			},
+			expected: `<<-EOT
+    hello
+    world
+EOT -> <<-EOT
+    goodbye
+    world
+EOT`,
+		},
 		"sensitive_update": {
 			change: Change{
 				renderer: Sensitive("0", "1", true, true),
