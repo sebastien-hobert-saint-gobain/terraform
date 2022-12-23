@@ -80,9 +80,9 @@ func TestRenderers(t *testing.T) {
 				replace:  false,
 			},
 			expected: `<<-EOT
-    hello
-    world
-EOT`,
+        hello
+        world
+    EOT`,
 		},
 		"multiline_string_delete": {
 			change: Change{
@@ -91,9 +91,9 @@ EOT`,
 				replace:  false,
 			},
 			expected: `<<-EOT
-    hello
-    world
-EOT -> null`,
+        hello
+        world
+    EOT -> null`,
 		},
 		"multiline_string_update": {
 			change: Change{
@@ -102,12 +102,22 @@ EOT -> null`,
 				replace:  false,
 			},
 			expected: `<<-EOT
-    hello
-    world
-EOT -> <<-EOT
-    goodbye
-    world
-EOT`,
+      - hello
+      + goodbye
+        world
+    EOT`,
+		},
+		"multiline_string_update_replace": {
+			change: Change{
+				renderer: Primitive("hello\nworld", "goodbye\nworld", cty.String),
+				action:   plans.Update,
+				replace:  true,
+			},
+			expected: `<<-EOT # forces replacement
+      - hello
+      + goodbye
+        world
+    EOT`,
 		},
 		"sensitive_update": {
 			change: Change{
