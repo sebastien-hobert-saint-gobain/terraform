@@ -46,3 +46,7 @@ func (renderer sensitiveRenderer) Warnings(change Change, indent int) []string {
 	}
 	return []string{warning}
 }
+
+func (renderer sensitiveRenderer) ContainsSensitive() bool {
+	return true
+}

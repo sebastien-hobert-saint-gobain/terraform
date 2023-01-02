@@ -17,6 +17,10 @@ type typeChangeRenderer struct {
 }
 
 func (renderer typeChangeRenderer) Render(change Change, indent int, opts RenderOpts) string {
-	opts.overrideNullSuffix = true // Never render null suffix for children of typenm changes.
+	opts.overrideNullSuffix = true // Never render null suffix for children of type changes.
 	return fmt.Sprintf("%s [yellow]->[reset] %s", renderer.before.Render(indent, opts), renderer.after.Render(indent, opts))
+}
+
+func (renderer typeChangeRenderer) ContainsSensitive() bool {
+	return renderer.before.ContainsSensitive() || renderer.after.ContainsSensitive()
 }

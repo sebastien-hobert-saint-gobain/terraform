@@ -27,3 +27,7 @@ func (renderer computedRenderer) Render(change Change, indent int, opts RenderOp
 	opts.overrideNullSuffix = true
 	return fmt.Sprintf("%s -> (known after apply)", renderer.before.Render(indent, opts))
 }
+
+func (renderer computedRenderer) ContainsSensitive() bool {
+	return renderer.before.ContainsSensitive()
+}

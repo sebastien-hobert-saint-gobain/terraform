@@ -61,6 +61,12 @@ func (change Change) Warnings(indent int) []string {
 	return change.renderer.Warnings(change, indent)
 }
 
+// ContainsSensitive returns true if this Change or any of its children are
+// sensitive.
+func (change Change) ContainsSensitive() bool {
+	return change.renderer.ContainsSensitive()
+}
+
 // GetAction returns the plans.Action that this change describes.
 func (change Change) GetAction() plans.Action {
 	return change.action

@@ -1316,6 +1316,55 @@ func TestRenderers(t *testing.T) {
         # (1 unchanged block hidden)
     }`,
 		},
+		"update_populated_block_with_sensitive": {
+			change: Change{
+				renderer: Block(map[string]Change{
+					"string": {
+						renderer: Primitive(nil, strptr("\"root\"")),
+						action:   plans.Create,
+					},
+					"boolean": {
+						renderer: Primitive(strptr("false"), strptr("true")),
+						action:   plans.Update,
+					},
+				}, map[string][]Change{
+					"nested_block": {
+						{
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, strptr("\"one\"")),
+									action:   plans.NoOp,
+								},
+							}, nil),
+							action: plans.NoOp,
+						},
+					},
+					"nested_block_two": {
+						{
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Sensitive(nil, "two", false, true),
+									action:   plans.Create,
+								},
+							}, nil),
+							action: plans.Create,
+						},
+					},
+				}),
+				action: plans.Update,
+			},
+			expected: `
+{
+      ~ boolean = false -> true
+      + string  = "root"
+
+      + nested_block_two {
+          # At least one attribute in this block is (or was) sensitive,
+          # so its content will not be displayed.
+        }
+        # (1 unchanged block hidden)
+    }`,
+		},
 		"clear_populated_block": {
 			change: Change{
 				renderer: Block(map[string]Change{

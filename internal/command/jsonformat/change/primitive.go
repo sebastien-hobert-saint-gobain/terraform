@@ -46,3 +46,7 @@ func (renderer primitiveRenderer) Render(result Change, indent int, opts RenderO
 		return fmt.Sprintf("%s [yellow]->[reset] %s%s", beforeValue, afterValue, result.forcesReplacement())
 	}
 }
+
+func (renderer primitiveRenderer) ContainsSensitive() bool {
+	return false
+}

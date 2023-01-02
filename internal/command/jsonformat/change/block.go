@@ -48,6 +48,11 @@ type blockRenderer struct {
 }
 
 func (renderer blockRenderer) Render(change Change, indent int, opts RenderOpts) string {
+	if renderer.ContainsSensitive() {
+		indent := fmt.Sprintf("%s%s ", change.indent(indent), change.emptySymbol())
+		return fmt.Sprintf("{%s\n%s  # At least one attribute in this block is (or was) sensitive,\n%s  # so its contents will not be displayed\n%s}", change.forcesReplacement(), indent, indent, indent)
+	}
+
 	unchangedAttributes := 0
 	unchangedBlocks := 0
 
@@ -123,4 +128,13 @@ func (renderer blockRenderer) Render(change Change, indent int, opts RenderOpts)
 
 	buf.WriteString(fmt.Sprintf("%s%s }", change.indent(indent), change.emptySymbol()))
 	return buf.String()
+}
+
+func (renderer blockRenderer) ContainsSensitive() bool {
+	for _, attribute := range renderer.attributes {
+		if attribute.ContainsSensitive() {
+			return true
+		}
+	}
+	return false
 }

@@ -8,6 +8,7 @@ package change
 type Renderer interface {
 	Render(change Change, indent int, opts RenderOpts) string
 	Warnings(change Change, indent int) []string
+	ContainsSensitive() bool
 }
 
 // NoWarningsRenderer defines a Warnings function that returns an empty list of
