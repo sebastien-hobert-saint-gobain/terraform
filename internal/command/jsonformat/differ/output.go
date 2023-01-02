@@ -17,7 +17,7 @@ const (
 	jsonNull   = "null"
 )
 
-func (v Value) ComputeChangeForOutput() change.Change {
+func (v Value) computeChangeForDynamicType() change.Change {
 	beforeType := getJsonType(v.Before)
 	afterType := getJsonType(v.After)
 
@@ -34,9 +34,9 @@ func (v Value) ComputeChangeForOutput() change.Change {
 		case jsonNumber:
 			res = v.computeAttributeChangeAsPrimitive(cty.Number)
 		case jsonObject:
-			res = v.computeAttributeChangeAsMap(cty.NilType)
+			res = v.computeAttributeChangeAsMap(cty.DynamicPseudoType)
 		case jsonArray:
-			res = v.computeAttributeChangeAsList(cty.NilType)
+			res = v.computeAttributeChangeAsList(cty.DynamicPseudoType)
 		default:
 			panic("unrecognized json type: " + jsonType)
 		}

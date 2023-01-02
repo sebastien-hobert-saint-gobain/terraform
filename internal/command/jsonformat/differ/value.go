@@ -20,7 +20,7 @@ import (
 // as jsonplan and jsonprovider).
 //
 // A Value can be converted into a change.Change, ready for rendering, with the
-// computeChangeForAttribute, ComputeChangeForOutput, and computeChangeForBlock
+// computeChangeForAttribute, computeChangeForDynamicType, and computeChangeForBlock
 // functions.
 type Value struct {
 

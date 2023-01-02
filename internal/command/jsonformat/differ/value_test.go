@@ -1208,9 +1208,10 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 	}
 }
 
-func TestValue_Outputs(t *testing.T) {
+func TestValue_Dynamic(t *testing.T) {
 	tcs := map[string]struct {
 		input          Value
+		attribute      cty.Type
 		validateChange change.ValidateChangeFunc
 	}{
 		"primitive_create": {
@@ -1218,6 +1219,7 @@ func TestValue_Outputs(t *testing.T) {
 				Before: nil,
 				After:  "new",
 			},
+			attribute:      cty.NilType,
 			validateChange: change.ValidatePrimitive(nil, strptr("\"new\""), plans.Create, false),
 		},
 		"map_create": {
@@ -1228,6 +1230,7 @@ func TestValue_Outputs(t *testing.T) {
 					"element_two": "new_two",
 				},
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateMap(map[string]change.ValidateChangeFunc{
 				"element_one": change.ValidatePrimitive(nil, strptr("\"new_one\""), plans.Create, false),
 				"element_two": change.ValidatePrimitive(nil, strptr("\"new_two\""), plans.Create, false),
@@ -1241,6 +1244,7 @@ func TestValue_Outputs(t *testing.T) {
 					"new_two",
 				},
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateList([]change.ValidateChangeFunc{
 				change.ValidatePrimitive(nil, strptr("\"new_one\""), plans.Create, false),
 				change.ValidatePrimitive(nil, strptr("\"new_two\""), plans.Create, false),
@@ -1251,6 +1255,7 @@ func TestValue_Outputs(t *testing.T) {
 				Before: "old",
 				After:  "new",
 			},
+			attribute:      cty.NilType,
 			validateChange: change.ValidatePrimitive(strptr("\"old\""), strptr("\"new\""), plans.Update, false),
 		},
 		"map_update": {
@@ -1264,6 +1269,7 @@ func TestValue_Outputs(t *testing.T) {
 					"element_two": "new_two",
 				},
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateMap(map[string]change.ValidateChangeFunc{
 				"element_one": change.ValidatePrimitive(strptr("\"old_one\""), strptr("\"new_one\""), plans.Update, false),
 				"element_two": change.ValidatePrimitive(strptr("\"old_two\""), strptr("\"new_two\""), plans.Update, false),
@@ -1280,6 +1286,7 @@ func TestValue_Outputs(t *testing.T) {
 					"new_two",
 				},
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateList([]change.ValidateChangeFunc{
 				change.ValidatePrimitive(strptr("\"old_one\""), nil, plans.Delete, false),
 				change.ValidatePrimitive(strptr("\"old_two\""), nil, plans.Delete, false),
@@ -1292,6 +1299,7 @@ func TestValue_Outputs(t *testing.T) {
 				Before: "old",
 				After:  nil,
 			},
+			attribute:      cty.NilType,
 			validateChange: change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
 		},
 		"map_delete": {
@@ -1302,6 +1310,7 @@ func TestValue_Outputs(t *testing.T) {
 				},
 				After: nil,
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateMap(map[string]change.ValidateChangeFunc{
 				"element_one": change.ValidatePrimitive(strptr("\"old_one\""), nil, plans.Delete, false),
 				"element_two": change.ValidatePrimitive(strptr("\"old_two\""), nil, plans.Delete, false),
@@ -1315,6 +1324,7 @@ func TestValue_Outputs(t *testing.T) {
 				},
 				After: nil,
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateList([]change.ValidateChangeFunc{
 				change.ValidatePrimitive(strptr("\"old_one\""), nil, plans.Delete, false),
 				change.ValidatePrimitive(strptr("\"old_two\""), nil, plans.Delete, false),
@@ -1328,6 +1338,7 @@ func TestValue_Outputs(t *testing.T) {
 					"new_two",
 				},
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateTypeChange(
 				change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
 				change.ValidateList([]change.ValidateChangeFunc{
@@ -1343,6 +1354,7 @@ func TestValue_Outputs(t *testing.T) {
 					"element_two": "new_two",
 				},
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateTypeChange(
 				change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
 				change.ValidateMap(map[string]change.ValidateChangeFunc{
@@ -1358,6 +1370,7 @@ func TestValue_Outputs(t *testing.T) {
 				},
 				After: "new",
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateTypeChange(
 				change.ValidateList([]change.ValidateChangeFunc{
 					change.ValidatePrimitive(strptr("\"old_one\""), nil, plans.Delete, false),
@@ -1377,6 +1390,7 @@ func TestValue_Outputs(t *testing.T) {
 					"element_two": "new_two",
 				},
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateTypeChange(
 				change.ValidateList([]change.ValidateChangeFunc{
 					change.ValidatePrimitive(strptr("\"old_one\""), nil, plans.Delete, false),
@@ -1395,6 +1409,7 @@ func TestValue_Outputs(t *testing.T) {
 				},
 				After: "new",
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateTypeChange(
 				change.ValidateMap(map[string]change.ValidateChangeFunc{
 					"element_one": change.ValidatePrimitive(strptr("\"old_one\""), nil, plans.Delete, false),
@@ -1414,6 +1429,7 @@ func TestValue_Outputs(t *testing.T) {
 					"new_two",
 				},
 			},
+			attribute: cty.NilType,
 			validateChange: change.ValidateTypeChange(
 				change.ValidateMap(map[string]change.ValidateChangeFunc{
 					"element_one": change.ValidatePrimitive(strptr("\"old_one\""), nil, plans.Delete, false),
@@ -1424,11 +1440,19 @@ func TestValue_Outputs(t *testing.T) {
 					change.ValidatePrimitive(nil, strptr("\"new_two\""), plans.Create, false),
 				}, plans.Create, false), plans.Update, false),
 		},
+		"dynamic_type_simple": {
+			input: Value{
+				Before: "old",
+				After:  "new",
+			},
+			attribute:      cty.DynamicPseudoType,
+			validateChange: change.ValidatePrimitive(strptr("\"old\""), strptr("\"new\""), plans.Update, false),
+		},
 	}
 
 	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
-			tc.validateChange(t, tc.input.ComputeChange(cty.NilType))
+			tc.validateChange(t, tc.input.ComputeChange(tc.attribute))
 		})
 	}
 }
