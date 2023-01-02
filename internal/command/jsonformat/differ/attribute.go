@@ -44,6 +44,8 @@ func (v Value) computeChangeForType(ctyType cty.Type) change.Change {
 		return v.computeAttributeChangeAsMap(ctyType.ElementType())
 	case ctyType.IsListType():
 		return v.computeAttributeChangeAsList(ctyType.ElementType())
+	case ctyType.IsTupleType():
+		return v.computeAttributeChangeAsTuple(ctyType.TupleElementTypes())
 	case ctyType.IsSetType():
 		return v.computeAttributeChangeAsSet(ctyType.ElementType())
 	default:
