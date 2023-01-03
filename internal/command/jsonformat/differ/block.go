@@ -25,32 +25,49 @@ func (v Value) computeChangeForBlock(block *jsonprovider.Block) change.Change {
 	}
 
 	blocks := make(map[string][]change.Change)
+	mapBlocks := make(map[string]map[string]change.Change)
 	for key, blockType := range block.BlockTypes {
 		childValue := blockValue.getChild(key)
-		childChanges, next := childValue.computeChangesForBlockType(blockType)
+
+		var next plans.Action
+		var add func()
+
+		switch blockType.NestingMode {
+		case "set":
+			var childChanges []change.Change
+			childChanges, next = childValue.computeBlockChangesAsSet(blockType.Block)
+			add = func() {
+				blocks[key] = childChanges
+			}
+		case "list":
+			var childChanges []change.Change
+			childChanges, next = childValue.computeBlockChangesAsList(blockType.Block)
+			add = func() {
+				blocks[key] = childChanges
+			}
+		case "map":
+			var childChanges map[string]change.Change
+			childChanges, next = childValue.computeBlockChangesAsMap(blockType.Block)
+			add = func() {
+				mapBlocks[key] = childChanges
+			}
+		case "single", "group":
+			ch := childValue.ComputeChange(blockType.Block)
+			next = ch.GetAction()
+			add = func() {
+				blocks[key] = []change.Change{ch}
+			}
+		default:
+			panic("unrecognized nesting mode: " + blockType.NestingMode)
+		}
+
 		if next == plans.NoOp && childValue.Before == nil && childValue.After == nil {
 			// Don't record nil values at all in blocks.
 			continue
 		}
-		blocks[key] = childChanges
+		add()
 		current = compareActions(current, next)
 	}
 
-	return change.New(change.Block(attributes, blocks), current, v.replacePath())
-}
-
-func (v Value) computeChangesForBlockType(blockType *jsonprovider.BlockType) ([]change.Change, plans.Action) {
-	switch blockType.NestingMode {
-	case "set":
-		return v.computeBlockChangesAsSet(blockType.Block)
-	case "list":
-		return v.computeBlockChangesAsList(blockType.Block)
-	case "map":
-		return v.computeBlockChangesAsMap(blockType.Block)
-	case "single", "group":
-		ch := v.ComputeChange(blockType.Block)
-		return []change.Change{ch}, ch.GetAction()
-	default:
-		panic("unrecognized nesting mode: " + blockType.NestingMode)
-	}
+	return change.New(change.Block(attributes, blocks, mapBlocks), current, v.replacePath())
 }

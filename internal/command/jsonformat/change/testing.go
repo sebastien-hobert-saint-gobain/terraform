@@ -189,7 +189,7 @@ func ValidateSet(elements []ValidateChangeFunc, action plans.Action, replace boo
 	}
 }
 
-func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][]ValidateChangeFunc, action plans.Action, replace bool) ValidateChangeFunc {
+func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][]ValidateChangeFunc, mapBlocks map[string]map[string]ValidateChangeFunc, action plans.Action, replace bool) ValidateChangeFunc {
 	return func(t *testing.T, change Change) {
 		validateChange(t, change, action, replace)
 
@@ -198,8 +198,8 @@ func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][
 			t.Fatalf("invalid renderer type: %T", change.renderer)
 		}
 
-		if len(block.attributes) != len(attributes) || len(block.blocks) != len(blocks) {
-			t.Fatalf("expected %d attributes and %d blocks but found %d attributes and %d blocks", len(attributes), len(blocks), len(block.attributes), len(block.blocks))
+		if len(block.attributes) != len(attributes) || len(block.blocks)+len(block.mapBlocks) != len(blocks)+len(mapBlocks) {
+			t.Fatalf("expected %d attributes and %d blocks but found %d attributes and %d blocks", len(attributes), len(blocks)+len(mapBlocks), len(block.attributes), len(block.blocks)+len(block.mapBlocks))
 		}
 
 		var missingAttributes []string
@@ -235,6 +235,40 @@ func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][
 			for ix := range expected {
 				expected[ix](t, actual[ix])
 			}
+		}
+
+		for key, expectedBlocks := range mapBlocks {
+			actualBlocks, ok := block.mapBlocks[key]
+			if !ok {
+				missingBlocks = append(missingBlocks, key)
+			}
+
+			if len(missingAttributes) > 0 || len(missingBlocks) > 0 {
+				continue
+			}
+
+			if len(expectedBlocks) != len(actualBlocks) {
+				t.Fatalf("expected %d map blocks for %s but found %d", len(expectedBlocks), key, len(actualBlocks))
+			}
+
+			var missing []string
+			for key, expected := range expectedBlocks {
+				actual, ok := actualBlocks[key]
+				if !ok {
+					missing = append(missing, key)
+				}
+
+				if len(missing) > 0 {
+					continue
+				}
+
+				expected(t, actual)
+			}
+
+			if len(missing) > 0 {
+				t.Fatalf("missing the following map blocks for %s: %s", key, strings.Join(missing, ", "))
+			}
+
 		}
 
 		if len(missingAttributes) > 0 || len(missingBlocks) > 0 {

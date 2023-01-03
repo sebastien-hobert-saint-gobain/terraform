@@ -1159,7 +1159,7 @@ func TestRenderers(t *testing.T) {
 		},
 		"create_empty_block": {
 			change: Change{
-				renderer: Block(nil, nil),
+				renderer: Block(nil, nil, nil),
 				action:   plans.Create,
 			},
 			expected: `
@@ -1185,7 +1185,7 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(nil, strptr("\"one\"")),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
@@ -1196,11 +1196,11 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(nil, strptr("\"two\"")),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Create,
 			},
 			expected: `
@@ -1236,7 +1236,7 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(nil, strptr("\"one\"")),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
@@ -1247,11 +1247,11 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(nil, strptr("\"two\"")),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Update,
 			},
 			expected: `
@@ -1287,7 +1287,7 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(nil, strptr("\"one\"")),
 									action:   plans.NoOp,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.NoOp,
 						},
 					},
@@ -1298,11 +1298,11 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(nil, strptr("\"two\"")),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Update,
 			},
 			expected: `
@@ -1335,7 +1335,7 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(strptr("\"one\""), nil),
 									action:   plans.Delete,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Delete,
 						},
 					},
@@ -1346,11 +1346,11 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(strptr("\"two\""), nil),
 									action:   plans.Delete,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Delete,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Update,
 			},
 			expected: `
@@ -1386,7 +1386,7 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(strptr("\"one\""), nil),
 									action:   plans.Delete,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Delete,
 						},
 					},
@@ -1397,11 +1397,11 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(strptr("\"two\""), nil),
 									action:   plans.Delete,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Delete,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Delete,
 			},
 			expected: `
@@ -1420,7 +1420,7 @@ func TestRenderers(t *testing.T) {
 		},
 		"delete_empty_block": {
 			change: Change{
-				renderer: Block(nil, nil),
+				renderer: Block(nil, nil, nil),
 				action:   plans.Delete,
 			},
 			expected: `
@@ -1446,7 +1446,7 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(strptr("\"one\""), strptr("\"one\"")),
 									action:   plans.NoOp,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.NoOp,
 						},
 					},
@@ -1457,11 +1457,11 @@ func TestRenderers(t *testing.T) {
 									renderer: Primitive(strptr("\"two\""), strptr("\"two\"")),
 									action:   plans.NoOp,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.NoOp,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.NoOp,
 			},
 			expected: `
@@ -1469,6 +1469,148 @@ func TestRenderers(t *testing.T) {
         id      = "root"
         # (1 unchanged attribute hidden)
         # (2 unchanged blocks hidden)
+    }`,
+		},
+		"create_map_block": {
+			change: Change{
+				renderer: Block(map[string]Change{
+					"string": {
+						renderer: Primitive(nil, strptr("\"root\"")),
+						action:   plans.Create,
+					},
+					"boolean": {
+						renderer: Primitive(nil, strptr("true")),
+						action:   plans.Create,
+					},
+				}, nil, map[string]map[string]Change{
+					"nested_block": {
+						"nested_block_entry": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, strptr("\"one\"")),
+									action:   plans.Create,
+								},
+							}, nil, nil),
+							action: plans.Create,
+						},
+						"nested_block_two_entry": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, strptr("\"two\"")),
+									action:   plans.Create,
+								},
+							}, nil, nil),
+							action: plans.Create,
+						},
+					},
+				}),
+				action: plans.Create,
+			},
+			expected: `
+{
+      + boolean = true
+      + string  = "root"
+
+      + nested_block "nested_block_entry" {
+          + string = "one"
+        }
+      + nested_block "nested_block_two_entry" {
+          + string = "two"
+        }
+    }`,
+		},
+		"update_map_block": {
+			change: Change{
+				renderer: Block(map[string]Change{
+					"string": {
+						renderer: Primitive(nil, strptr("\"root\"")),
+						action:   plans.Create,
+					},
+					"boolean": {
+						renderer: Primitive(strptr("false"), strptr("true")),
+						action:   plans.Update,
+					},
+				}, nil, map[string]map[string]Change{
+					"nested_block": {
+						"nested_block_entry_one": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, strptr("\"one\"")),
+									action:   plans.NoOp,
+								},
+							}, nil, nil),
+							action: plans.NoOp,
+						},
+						"nested_block_entry_two": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, strptr("\"two\"")),
+									action:   plans.Create,
+								},
+							}, nil, nil),
+							action: plans.Create,
+						},
+					},
+				}),
+				action: plans.Update,
+			},
+			expected: `
+{
+      ~ boolean = false -> true
+      + string  = "root"
+
+      + nested_block "nested_block_entry_two" {
+          + string = "two"
+        }
+        # (1 unchanged block hidden)
+    }`,
+		},
+		"delete_map_block": {
+			change: Change{
+				renderer: Block(map[string]Change{
+					"string": {
+						renderer: Primitive(strptr("\"root\""), nil),
+						action:   plans.Delete,
+					},
+					"boolean": {
+						renderer: Primitive(strptr("true"), nil),
+						action:   plans.Delete,
+					},
+				}, nil, map[string]map[string]Change{
+					"nested_block": {
+						"nested_block_entry_one": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(strptr("\"one\""), nil),
+									action:   plans.Delete,
+								},
+							}, nil, nil),
+							action: plans.Delete,
+						},
+						"nested_block_entry_two": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(strptr("\"two\""), nil),
+									action:   plans.Delete,
+								},
+							}, nil, nil),
+							action: plans.Delete,
+						},
+					},
+				}),
+				action: plans.Delete,
+			},
+			expected: `
+{
+      - boolean = true -> null
+      - string  = "root" -> null
+
+      - nested_block "nested_block_entry_one" {
+          - string = "one" -> null
+        }
+      - nested_block "nested_block_entry_two" {
+          - string = "two" -> null
+        }
     }`,
 		},
 		"output_map_to_list": {

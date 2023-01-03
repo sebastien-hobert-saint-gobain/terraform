@@ -24,7 +24,7 @@ func importantAttribute(attr string) bool {
 	return false
 }
 
-func Block(attributes map[string]Change, blocks map[string][]Change) Renderer {
+func Block(attributes map[string]Change, blocks map[string][]Change, mapBlocks map[string]map[string]Change) Renderer {
 	maximumKeyLen := 0
 	for key := range attributes {
 		if len(key) > maximumKeyLen {
@@ -35,6 +35,7 @@ func Block(attributes map[string]Change, blocks map[string][]Change) Renderer {
 	return &blockRenderer{
 		attributes:    attributes,
 		blocks:        blocks,
+		mapBlocks:     mapBlocks,
 		maximumKeyLen: maximumKeyLen,
 	}
 }
@@ -44,6 +45,7 @@ type blockRenderer struct {
 
 	attributes    map[string]Change
 	blocks        map[string][]Change
+	mapBlocks     map[string]map[string]Change
 	maximumKeyLen int
 }
 
@@ -93,27 +95,58 @@ func (renderer blockRenderer) Render(change Change, indent int, opts RenderOpts)
 	for key := range renderer.blocks {
 		blockKeys = append(blockKeys, key)
 	}
+	for key := range renderer.mapBlocks {
+		blockKeys = append(blockKeys, key)
+	}
 	sort.Strings(blockKeys)
 
 	for _, key := range blockKeys {
-		blocks := renderer.blocks[key]
+		if blocks, ok := renderer.blocks[key]; ok {
+			foundChangedBlock := false
+			for _, block := range blocks {
+				if block.action == plans.NoOp && !opts.showUnchangedChildren {
+					unchangedBlocks++
+					continue
+				}
 
-		foundChangedBlock := false
-		for _, block := range blocks {
-			if block.action == plans.NoOp && !opts.showUnchangedChildren {
-				unchangedBlocks++
-				continue
-			}
+				if !foundChangedBlock && len(renderer.attributes) > 0 {
+					buf.WriteString("\n")
+					foundChangedBlock = true
+				}
 
-			if !foundChangedBlock && len(renderer.attributes) > 0 {
-				buf.WriteString("\n")
-				foundChangedBlock = true
+				for _, warning := range block.Warnings(indent + 1) {
+					buf.WriteString(fmt.Sprintf("%s%s\n", change.indent(indent+1), warning))
+				}
+				buf.WriteString(fmt.Sprintf("%s%s %s %s\n", change.indent(indent+1), format.DiffActionSymbol(block.action), key, block.Render(indent+1, opts)))
 			}
+		}
 
-			for _, warning := range block.Warnings(indent + 1) {
-				buf.WriteString(fmt.Sprintf("%s%s\n", change.indent(indent+1), warning))
+		if blocks, ok := renderer.mapBlocks[key]; ok {
+			foundChangedBlock := false
+
+			var sortedBlocks []string
+			for mapKey := range blocks {
+				sortedBlocks = append(sortedBlocks, mapKey)
 			}
-			buf.WriteString(fmt.Sprintf("%s%s %s %s\n", change.indent(indent+1), format.DiffActionSymbol(block.action), key, block.Render(indent+1, opts)))
+			sort.Strings(sortedBlocks)
+
+			for _, mapKey := range sortedBlocks {
+				block := blocks[mapKey]
+				if block.action == plans.NoOp && !opts.showUnchangedChildren {
+					unchangedBlocks++
+					continue
+				}
+
+				if !foundChangedBlock && len(renderer.attributes) > 0 {
+					buf.WriteString("\n")
+					foundChangedBlock = true
+				}
+
+				for _, warning := range block.Warnings(indent + 1) {
+					buf.WriteString(fmt.Sprintf("%s%s\n", change.indent(indent+1), warning))
+				}
+				buf.WriteString(fmt.Sprintf("%s%s %s \"%s\" %s\n", change.indent(indent+1), format.DiffActionSymbol(block.action), key, mapKey, block.Render(indent+1, opts)))
+			}
 		}
 	}
 

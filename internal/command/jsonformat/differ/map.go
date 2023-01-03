@@ -30,12 +30,12 @@ func (v Value) computeAttributeChangeAsNestedMap(attributes map[string]*jsonprov
 	return change.New(change.Map(elements), current, v.replacePath())
 }
 
-func (v Value) computeBlockChangesAsMap(block *jsonprovider.Block) ([]change.Change, plans.Action) {
+func (v Value) computeBlockChangesAsMap(block *jsonprovider.Block) (map[string]change.Change, plans.Action) {
 	current := v.getDefaultActionForIteration()
-	var elements []change.Change
+	elements := make(map[string]change.Change)
 	v.processMap(func(key string, value Value) {
 		element := value.ComputeChange(block)
-		elements = append(elements, element)
+		elements[key] = element
 		current = compareActions(current, element.GetAction())
 	})
 	return elements, current

@@ -897,12 +897,12 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 			},
 			validate: change.ValidateBlock(map[string]change.ValidateChangeFunc{
 				"attribute_one": change.ValidatePrimitive(nil, strptr("\"new\""), plans.Create, false),
-			}, nil, plans.Update, false),
+			}, nil, nil, plans.Update, false),
 			validateSet: []change.ValidateChangeFunc{
-				change.ValidateBlock(nil, nil, plans.Delete, false),
+				change.ValidateBlock(nil, nil, nil, plans.Delete, false),
 				change.ValidateBlock(map[string]change.ValidateChangeFunc{
 					"attribute_one": change.ValidatePrimitive(nil, strptr("\"new\""), plans.Create, false),
-				}, nil, plans.Create, false),
+				}, nil, nil, plans.Create, false),
 			},
 		},
 		"update_attribute": {
@@ -921,14 +921,14 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 			},
 			validate: change.ValidateBlock(map[string]change.ValidateChangeFunc{
 				"attribute_one": change.ValidatePrimitive(strptr("\"old\""), strptr("\"new\""), plans.Update, false),
-			}, nil, plans.Update, false),
+			}, nil, nil, plans.Update, false),
 			validateSet: []change.ValidateChangeFunc{
 				change.ValidateBlock(map[string]change.ValidateChangeFunc{
 					"attribute_one": change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
-				}, nil, plans.Delete, false),
+				}, nil, nil, plans.Delete, false),
 				change.ValidateBlock(map[string]change.ValidateChangeFunc{
 					"attribute_one": change.ValidatePrimitive(nil, strptr("\"new\""), plans.Create, false),
-				}, nil, plans.Create, false),
+				}, nil, nil, plans.Create, false),
 			},
 		},
 		"delete_attribute": {
@@ -945,12 +945,12 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 			},
 			validate: change.ValidateBlock(map[string]change.ValidateChangeFunc{
 				"attribute_one": change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
-			}, nil, plans.Update, false),
+			}, nil, nil, plans.Update, false),
 			validateSet: []change.ValidateChangeFunc{
 				change.ValidateBlock(map[string]change.ValidateChangeFunc{
 					"attribute_one": change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
-				}, nil, plans.Delete, false),
-				change.ValidateBlock(nil, nil, plans.Create, false),
+				}, nil, nil, plans.Delete, false),
+				change.ValidateBlock(nil, nil, nil, plans.Create, false),
 			},
 		},
 		"create_block": {
@@ -978,18 +978,18 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 				"block_one": {
 					change.ValidateBlock(map[string]change.ValidateChangeFunc{
 						"attribute_one": change.ValidatePrimitive(nil, strptr("\"new\""), plans.Create, false),
-					}, nil, plans.Create, false),
+					}, nil, nil, plans.Create, false),
 				},
-			}, plans.Update, false),
+			}, nil, plans.Update, false),
 			validateSet: []change.ValidateChangeFunc{
-				change.ValidateBlock(nil, nil, plans.Delete, false),
+				change.ValidateBlock(nil, nil, nil, plans.Delete, false),
 				change.ValidateBlock(nil, map[string][]change.ValidateChangeFunc{
 					"block_one": {
 						change.ValidateBlock(map[string]change.ValidateChangeFunc{
 							"attribute_one": change.ValidatePrimitive(nil, strptr("\"new\""), plans.Create, false),
-						}, nil, plans.Create, false),
+						}, nil, nil, plans.Create, false),
 					},
-				}, plans.Create, false),
+				}, nil, plans.Create, false),
 			},
 		},
 		"update_block": {
@@ -1021,24 +1021,24 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 				"block_one": {
 					change.ValidateBlock(map[string]change.ValidateChangeFunc{
 						"attribute_one": change.ValidatePrimitive(strptr("\"old\""), strptr("\"new\""), plans.Update, false),
-					}, nil, plans.Update, false),
+					}, nil, nil, plans.Update, false),
 				},
-			}, plans.Update, false),
+			}, nil, plans.Update, false),
 			validateSet: []change.ValidateChangeFunc{
 				change.ValidateBlock(nil, map[string][]change.ValidateChangeFunc{
 					"block_one": {
 						change.ValidateBlock(map[string]change.ValidateChangeFunc{
 							"attribute_one": change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
-						}, nil, plans.Delete, false),
+						}, nil, nil, plans.Delete, false),
 					},
-				}, plans.Delete, false),
+				}, nil, plans.Delete, false),
 				change.ValidateBlock(nil, map[string][]change.ValidateChangeFunc{
 					"block_one": {
 						change.ValidateBlock(map[string]change.ValidateChangeFunc{
 							"attribute_one": change.ValidatePrimitive(nil, strptr("\"new\""), plans.Create, false),
-						}, nil, plans.Create, false),
+						}, nil, nil, plans.Create, false),
 					},
-				}, plans.Create, false),
+				}, nil, plans.Create, false),
 			},
 		},
 		"delete_block": {
@@ -1066,18 +1066,18 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 				"block_one": {
 					change.ValidateBlock(map[string]change.ValidateChangeFunc{
 						"attribute_one": change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
-					}, nil, plans.Delete, false),
+					}, nil, nil, plans.Delete, false),
 				},
-			}, plans.Update, false),
+			}, nil, plans.Update, false),
 			validateSet: []change.ValidateChangeFunc{
 				change.ValidateBlock(nil, map[string][]change.ValidateChangeFunc{
 					"block_one": {
 						change.ValidateBlock(map[string]change.ValidateChangeFunc{
 							"attribute_one": change.ValidatePrimitive(strptr("\"old\""), nil, plans.Delete, false),
-						}, nil, plans.Delete, false),
+						}, nil, nil, plans.Delete, false),
 					},
-				}, plans.Delete, false),
-				change.ValidateBlock(nil, nil, plans.Create, false),
+				}, nil, plans.Delete, false),
+				change.ValidateBlock(nil, nil, nil, plans.Create, false),
 			},
 		},
 	}
@@ -1108,7 +1108,7 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 					"block_type": {
 						tc.validate,
 					},
-				}, plans.Update, false)
+				}, nil, plans.Update, false)
 				validate(t, input.ComputeChange(block))
 			})
 			t.Run("map", func(t *testing.T) {
@@ -1134,9 +1134,9 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 					},
 				}
 
-				validate := change.ValidateBlock(nil, map[string][]change.ValidateChangeFunc{
+				validate := change.ValidateBlock(nil, nil, map[string]map[string]change.ValidateChangeFunc{
 					"block_type": {
-						tc.validate,
+						"one": tc.validate,
 					},
 				}, plans.Update, false)
 				validate(t, input.ComputeChange(block))
@@ -1168,7 +1168,7 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 					"block_type": {
 						tc.validate,
 					},
-				}, plans.Update, false)
+				}, nil, plans.Update, false)
 				validate(t, input.ComputeChange(block))
 			})
 			t.Run("set", func(t *testing.T) {
@@ -1201,7 +1201,7 @@ func TestValue_BlockAttributesAndNestedBlocks(t *testing.T) {
 						}
 						return []change.ValidateChangeFunc{tc.validate}
 					}(),
-				}, plans.Update, false)
+				}, nil, plans.Update, false)
 				validate(t, input.ComputeChange(block))
 			})
 		})
