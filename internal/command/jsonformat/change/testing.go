@@ -1,6 +1,7 @@
 package change
 
 import (
+	"github.com/zclconf/go-cty/cty"
 	"strings"
 	"testing"
 
@@ -13,11 +14,11 @@ type ValidateChangeFunc func(t *testing.T, change Change)
 
 func validateChange(t *testing.T, change Change, expectedAction plans.Action, expectedReplace bool) {
 	if change.replace != expectedReplace || change.action != expectedAction {
-		t.Fatalf("\nreplace:\n\texpected:%t\n\tactual:%t\naction:\n\texpected:%s\n\tactual:%s", expectedReplace, change.replace, expectedAction, change.action)
+		t.Errorf("\nreplace:\n\texpected:%t\n\tactual:%t\naction:\n\texpected:%s\n\tactual:%s", expectedReplace, change.replace, expectedAction, change.action)
 	}
 }
 
-func ValidatePrimitive(before, after *string, action plans.Action, replace bool) ValidateChangeFunc {
+func ValidatePrimitive(before, after interface{}, ctyType cty.Type, action plans.Action, replace bool) ValidateChangeFunc {
 	return func(t *testing.T, change Change) {
 		validateChange(t, change, action, replace)
 
@@ -28,9 +29,12 @@ func ValidatePrimitive(before, after *string, action plans.Action, replace bool)
 
 		beforeDiff := cmp.Diff(primitive.before, before)
 		afterDiff := cmp.Diff(primitive.after, after)
-
 		if len(beforeDiff) > 0 || len(afterDiff) > 0 {
-			t.Fatalf("before diff: (%s), after diff: (%s)", beforeDiff, afterDiff)
+			t.Errorf("before diff: (%s), after diff: (%s)", beforeDiff, afterDiff)
+		}
+
+		if !ctyType.Equals(primitive.t) {
+			t.Errorf("expected type %s but got type %s", ctyType.FriendlyName(), primitive.t.FriendlyName())
 		}
 	}
 }
@@ -45,7 +49,7 @@ func ValidateObject(attributes map[string]ValidateChangeFunc, action plans.Actio
 		}
 
 		if !object.overrideNullSuffix {
-			t.Fatalf("created the wrong type of object renderer")
+			t.Errorf("created the wrong type of object renderer")
 		}
 
 		validateObject(t, object, attributes)
@@ -62,7 +66,7 @@ func ValidateNestedObject(attributes map[string]ValidateChangeFunc, action plans
 		}
 
 		if object.overrideNullSuffix {
-			t.Fatalf("created the wrong type of object renderer")
+			t.Errorf("created the wrong type of object renderer")
 		}
 
 		validateObject(t, object, attributes)
@@ -71,7 +75,7 @@ func ValidateNestedObject(attributes map[string]ValidateChangeFunc, action plans
 
 func validateObject(t *testing.T, object *objectRenderer, attributes map[string]ValidateChangeFunc) {
 	if len(object.attributes) != len(attributes) {
-		t.Fatalf("expected %d attributes but found %d attributes", len(attributes), len(object.attributes))
+		t.Errorf("expected %d attributes but found %d attributes", len(attributes), len(object.attributes))
 	}
 
 	var missing []string
@@ -89,7 +93,7 @@ func validateObject(t *testing.T, object *objectRenderer, attributes map[string]
 	}
 
 	if len(missing) > 0 {
-		t.Fatalf("missing the following attributes: %s", strings.Join(missing, ", "))
+		t.Errorf("missing the following attributes: %s", strings.Join(missing, ", "))
 	}
 }
 
@@ -103,7 +107,7 @@ func ValidateMap(elements map[string]ValidateChangeFunc, action plans.Action, re
 		}
 
 		if len(m.elements) != len(elements) {
-			t.Fatalf("expected %d elements but found %d elements", len(elements), len(m.elements))
+			t.Errorf("expected %d elements but found %d elements", len(elements), len(m.elements))
 		}
 
 		var missing []string
@@ -121,7 +125,7 @@ func ValidateMap(elements map[string]ValidateChangeFunc, action plans.Action, re
 		}
 
 		if len(missing) > 0 {
-			t.Fatalf("missing the following elements: %s", strings.Join(missing, ", "))
+			t.Errorf("missing the following elements: %s", strings.Join(missing, ", "))
 		}
 	}
 }
@@ -136,7 +140,7 @@ func ValidateList(elements []ValidateChangeFunc, action plans.Action, replace bo
 		}
 
 		if !list.displayContext {
-			t.Fatalf("created the wrong type of list renderer")
+			t.Errorf("created the wrong type of list renderer")
 		}
 
 		validateList(t, list, elements)
@@ -153,7 +157,7 @@ func ValidateNestedList(elements []ValidateChangeFunc, action plans.Action, repl
 		}
 
 		if list.displayContext {
-			t.Fatalf("created the wrong type of list renderer")
+			t.Errorf("created the wrong type of list renderer")
 		}
 
 		validateList(t, list, elements)
@@ -189,7 +193,7 @@ func ValidateSet(elements []ValidateChangeFunc, action plans.Action, replace boo
 	}
 }
 
-func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][]ValidateChangeFunc, action plans.Action, replace bool) ValidateChangeFunc {
+func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][]ValidateChangeFunc, mapBlocks map[string]map[string]ValidateChangeFunc, action plans.Action, replace bool) ValidateChangeFunc {
 	return func(t *testing.T, change Change) {
 		validateChange(t, change, action, replace)
 
@@ -198,8 +202,8 @@ func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][
 			t.Fatalf("invalid renderer type: %T", change.renderer)
 		}
 
-		if len(block.attributes) != len(attributes) || len(block.blocks) != len(blocks) {
-			t.Fatalf("expected %d attributes and %d blocks but found %d attributes and %d blocks", len(attributes), len(blocks), len(block.attributes), len(block.blocks))
+		if len(block.attributes) != len(attributes) || len(block.blocks)+len(block.mapBlocks) != len(blocks)+len(mapBlocks) {
+			t.Errorf("expected %d attributes and %d blocks but found %d attributes and %d blocks", len(attributes), len(blocks)+len(mapBlocks), len(block.attributes), len(block.blocks)+len(block.mapBlocks))
 		}
 
 		var missingAttributes []string
@@ -229,7 +233,7 @@ func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][
 			}
 
 			if len(expected) != len(actual) {
-				t.Fatalf("expected %d blocks for %s but found %d", len(expected), key, len(actual))
+				t.Errorf("expected %d blocks for %s but found %d", len(expected), key, len(actual))
 			}
 
 			for ix := range expected {
@@ -237,8 +241,42 @@ func ValidateBlock(attributes map[string]ValidateChangeFunc, blocks map[string][
 			}
 		}
 
+		for key, expectedBlocks := range mapBlocks {
+			actualBlocks, ok := block.mapBlocks[key]
+			if !ok {
+				missingBlocks = append(missingBlocks, key)
+			}
+
+			if len(missingAttributes) > 0 || len(missingBlocks) > 0 {
+				continue
+			}
+
+			if len(expectedBlocks) != len(actualBlocks) {
+				t.Fatalf("expected %d map blocks for %s but found %d", len(expectedBlocks), key, len(actualBlocks))
+			}
+
+			var missing []string
+			for key, expected := range expectedBlocks {
+				actual, ok := actualBlocks[key]
+				if !ok {
+					missing = append(missing, key)
+				}
+
+				if len(missing) > 0 {
+					continue
+				}
+
+				expected(t, actual)
+			}
+
+			if len(missing) > 0 {
+				t.Fatalf("missing the following map blocks for %s: %s", key, strings.Join(missing, ", "))
+			}
+
+		}
+
 		if len(missingAttributes) > 0 || len(missingBlocks) > 0 {
-			t.Fatalf("missing the following attributes: %s, and the following blocks: %s", strings.Join(missingAttributes, ", "), strings.Join(missingBlocks, ", "))
+			t.Errorf("missing the following attributes: %s, and the following blocks: %s", strings.Join(missingAttributes, ", "), strings.Join(missingBlocks, ", "))
 		}
 	}
 }
@@ -267,14 +305,14 @@ func ValidateSensitive(before, after interface{}, beforeSensitive, afterSensitiv
 		}
 
 		if beforeSensitive != sensitive.beforeSensitive || afterSensitive != sensitive.afterSensitive {
-			t.Fatalf("before or after sensitive values don't match:\n\texpected; before: %t after: %t\n\tactual; before: %t, after: %t", beforeSensitive, afterSensitive, sensitive.beforeSensitive, sensitive.afterSensitive)
+			t.Errorf("before or after sensitive values don't match:\n\texpected; before: %t after: %t\n\tactual; before: %t, after: %t", beforeSensitive, afterSensitive, sensitive.beforeSensitive, sensitive.afterSensitive)
 		}
 
 		beforeDiff := cmp.Diff(sensitive.before, before)
 		afterDiff := cmp.Diff(sensitive.after, after)
 
 		if len(beforeDiff) > 0 || len(afterDiff) > 0 {
-			t.Fatalf("before diff: (%s), after diff: (%s)", beforeDiff, afterDiff)
+			t.Errorf("before diff: (%s), after diff: (%s)", beforeDiff, afterDiff)
 		}
 	}
 }

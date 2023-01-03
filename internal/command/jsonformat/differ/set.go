@@ -29,7 +29,7 @@ func (v Value) computeAttributeChangeAsNestedSet(attributes map[string]*jsonprov
 		elements = append(elements, element)
 		current = compareActions(current, element.GetAction())
 	})
-	return change.New(change.Set(elements), current, v.replacePath())
+	return change.New(change.Set(elements), current, false)
 }
 
 func (v Value) computeBlockChangesAsSet(block *jsonprovider.Block) ([]change.Change, plans.Action) {
@@ -62,7 +62,7 @@ func (v Value) processSet(propagateReplace bool, process func(value Value)) {
 			}
 
 			child := sliceValue.getChild(ix, jx, propagateReplace)
-			if reflect.DeepEqual(child.Before, child.After) && child.isBeforeSensitive() == child.isAfterSensitive() && child.Unknown == nil {
+			if reflect.DeepEqual(child.Before, child.After) && child.isBeforeSensitive() == child.isAfterSensitive() && !anyUnknown(child.Unknown) {
 				matched = true
 				foundInBefore[ix] = jx
 				foundInAfter[jx] = ix

@@ -1,6 +1,7 @@
 package change
 
 import (
+	"github.com/zclconf/go-cty/cty"
 	"strings"
 	"testing"
 
@@ -11,10 +12,6 @@ import (
 )
 
 func TestRenderers(t *testing.T) {
-	strptr := func(in string) *string {
-		return &in
-	}
-
 	colorize := colorstring.Colorize{
 		Colors:  colorstring.DefaultColors,
 		Disable: true,
@@ -27,21 +24,21 @@ func TestRenderers(t *testing.T) {
 	}{
 		"primitive_create": {
 			change: Change{
-				renderer: Primitive(nil, strptr("1")),
+				renderer: Primitive(nil, 1.0, cty.Number),
 				action:   plans.Create,
 			},
 			expected: "1",
 		},
 		"primitive_delete": {
 			change: Change{
-				renderer: Primitive(strptr("1"), nil),
+				renderer: Primitive(1.0, nil, cty.Number),
 				action:   plans.Delete,
 			},
 			expected: "1 -> null",
 		},
 		"primitive_delete_override": {
 			change: Change{
-				renderer: Primitive(strptr("1"), nil),
+				renderer: Primitive(1.0, nil, cty.Number),
 				action:   plans.Delete,
 			},
 			opts:     RenderOpts{overrideNullSuffix: true},
@@ -49,32 +46,78 @@ func TestRenderers(t *testing.T) {
 		},
 		"primitive_update_to_null": {
 			change: Change{
-				renderer: Primitive(strptr("1"), nil),
+				renderer: Primitive(1.0, nil, cty.Number),
 				action:   plans.Update,
 			},
 			expected: "1 -> null",
 		},
 		"primitive_update_from_null": {
 			change: Change{
-				renderer: Primitive(nil, strptr("1")),
+				renderer: Primitive(nil, 1.0, cty.Number),
 				action:   plans.Update,
 			},
 			expected: "null -> 1",
 		},
 		"primitive_update": {
 			change: Change{
-				renderer: Primitive(strptr("0"), strptr("1")),
+				renderer: Primitive(0.0, 1.0, cty.Number),
 				action:   plans.Update,
 			},
 			expected: "0 -> 1",
 		},
 		"primitive_update_replace": {
 			change: Change{
-				renderer: Primitive(strptr("0"), strptr("1")),
+				renderer: Primitive(0.0, 1.0, cty.Number),
 				action:   plans.Update,
 				replace:  true,
 			},
 			expected: "0 -> 1 # forces replacement",
+		},
+		"multiline_string_create": {
+			change: Change{
+				renderer: Primitive(nil, "hello\nworld", cty.String),
+				action:   plans.Create,
+				replace:  false,
+			},
+			expected: `<<-EOT
+        hello
+        world
+    EOT`,
+		},
+		"multiline_string_delete": {
+			change: Change{
+				renderer: Primitive("hello\nworld", nil, cty.String),
+				action:   plans.Delete,
+				replace:  false,
+			},
+			expected: `<<-EOT
+        hello
+        world
+    EOT -> null`,
+		},
+		"multiline_string_update": {
+			change: Change{
+				renderer: Primitive("hello\nworld", "goodbye\nworld", cty.String),
+				action:   plans.Update,
+				replace:  false,
+			},
+			expected: `<<-EOT
+      - hello
+      + goodbye
+        world
+    EOT`,
+		},
+		"multiline_string_update_replace": {
+			change: Change{
+				renderer: Primitive("hello\nworld", "goodbye\nworld", cty.String),
+				action:   plans.Update,
+				replace:  true,
+			},
+			expected: `<<-EOT # forces replacement
+      - hello
+      + goodbye
+        world
+    EOT`,
 		},
 		"sensitive_update": {
 			change: Change{
@@ -101,7 +144,7 @@ func TestRenderers(t *testing.T) {
 		"computed_update": {
 			change: Change{
 				renderer: Computed(Change{
-					renderer: Primitive(strptr("0"), nil),
+					renderer: Primitive(0.0, nil, cty.Number),
 					action:   plans.Delete,
 				}),
 				action: plans.Update,
@@ -119,7 +162,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Primitive(nil, strptr("0")),
+						renderer: Primitive(nil, 0.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -142,7 +185,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Primitive(strptr("0"), nil),
+						renderer: Primitive(0.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 				}),
@@ -165,7 +208,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: NestedObject(map[string]Change{
 					"attribute_one": {
-						renderer: Primitive(strptr("0"), nil),
+						renderer: Primitive(0.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 				}),
@@ -181,7 +224,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Primitive(nil, strptr("0")),
+						renderer: Primitive(nil, 0.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -197,7 +240,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Primitive(strptr("0"), strptr("1")),
+						renderer: Primitive(0.0, 1.0, cty.Number),
 						action:   plans.Update,
 					},
 				}),
@@ -213,7 +256,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Primitive(strptr("0"), strptr("1")),
+						renderer: Primitive(0.0, 1.0, cty.Number),
 						action:   plans.Update,
 					},
 				}),
@@ -230,7 +273,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Primitive(strptr("0"), nil),
+						renderer: Primitive(0.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 				}),
@@ -246,15 +289,15 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Primitive(strptr("0"), strptr("1")),
+						renderer: Primitive(0.0, 1.0, cty.Number),
 						action:   plans.Update,
 					},
 					"attribute_two": {
-						renderer: Primitive(strptr("0"), strptr("0")),
+						renderer: Primitive(0.0, 0.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					"attribute_three": {
-						renderer: Primitive(nil, strptr("1")),
+						renderer: Primitive(nil, 1.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -272,7 +315,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Sensitive(nil, 1, false, true),
+						renderer: Sensitive(nil, 1.0, false, true),
 						action:   plans.Create,
 					},
 				}),
@@ -288,7 +331,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Sensitive(nil, 1, false, true),
+						renderer: Sensitive(nil, 1.0, false, true),
 						action:   plans.Update,
 					},
 				}),
@@ -304,7 +347,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Object(map[string]Change{
 					"attribute_one": {
-						renderer: Sensitive(nil, 1, false, true),
+						renderer: Sensitive(nil, 1.0, false, true),
 						action:   plans.Delete,
 					},
 				}),
@@ -337,7 +380,7 @@ func TestRenderers(t *testing.T) {
 				renderer: Object(map[string]Change{
 					"attribute_one": {
 						renderer: Computed(Change{
-							renderer: Primitive(strptr("1"), nil),
+							renderer: Primitive(1.0, nil, cty.Number),
 							action:   plans.Delete,
 						}),
 						action: plans.Update,
@@ -362,7 +405,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Primitive(nil, strptr("new")),
+						renderer: Primitive(nil, "new", cty.String),
 						action:   plans.Create,
 					},
 				}),
@@ -370,7 +413,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      + "element_one" = new
+      + "element_one" = "new"
     }
 `,
 		},
@@ -385,7 +428,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Primitive(strptr("old"), nil),
+						renderer: Primitive("old", nil, cty.String),
 						action:   plans.Delete,
 					},
 				}),
@@ -393,7 +436,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      - "element_one" = old
+      - "element_one" = "old"
     } -> null
 `,
 		},
@@ -401,7 +444,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Primitive(nil, strptr("new")),
+						renderer: Primitive(nil, "new", cty.String),
 						action:   plans.Create,
 					},
 				}),
@@ -409,7 +452,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      + "element_one" = new
+      + "element_one" = "new"
     }
 `,
 		},
@@ -417,7 +460,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Primitive(strptr("old"), strptr("new")),
+						renderer: Primitive("old", "new", cty.String),
 						action:   plans.Update,
 					},
 				}),
@@ -425,7 +468,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      ~ "element_one" = old -> new
+      ~ "element_one" = "old" -> "new"
     }
 `,
 		},
@@ -433,7 +476,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Primitive(strptr("old"), nil),
+						renderer: Primitive("old", nil, cty.String),
 						action:   plans.Delete,
 					},
 				}),
@@ -441,7 +484,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      - "element_one" = old -> null
+      - "element_one" = "old" -> null
     }
 `,
 		},
@@ -449,7 +492,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Primitive(strptr("old"), strptr("new")),
+						renderer: Primitive("old", "new", cty.String),
 						action:   plans.Update,
 					},
 				}),
@@ -458,7 +501,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 { # forces replacement
-      ~ "element_one" = old -> new
+      ~ "element_one" = "old" -> "new"
     }
 `,
 		},
@@ -466,15 +509,15 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Primitive(nil, strptr("new")),
+						renderer: Primitive(nil, "new", cty.String),
 						action:   plans.Create,
 					},
 					"element_two": {
-						renderer: Primitive(strptr("old"), strptr("old")),
+						renderer: Primitive("old", "old", cty.String),
 						action:   plans.NoOp,
 					},
 					"element_three": {
-						renderer: Primitive(strptr("old"), strptr("new")),
+						renderer: Primitive("old", "new", cty.String),
 						action:   plans.Update,
 					},
 				}),
@@ -482,8 +525,8 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      + "element_one"   = new
-      ~ "element_three" = old -> new
+      + "element_one"   = "new"
+      ~ "element_three" = "old" -> "new"
         # (1 unchanged element hidden)
     }
 `,
@@ -492,7 +535,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Sensitive(nil, 1, false, true),
+						renderer: Sensitive(nil, 1.0, false, true),
 						action:   plans.Create,
 					},
 				}),
@@ -508,7 +551,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Sensitive(0, 1, true, true),
+						renderer: Sensitive(0.0, 1.0, true, true),
 						action:   plans.Update,
 					},
 				}),
@@ -524,7 +567,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Sensitive(0, 0, true, false),
+						renderer: Sensitive(0.0, 0.0, true, false),
 						action:   plans.Update,
 					},
 				}),
@@ -542,7 +585,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Map(map[string]Change{
 					"element_one": {
-						renderer: Sensitive(0, nil, true, false),
+						renderer: Sensitive(0.0, nil, true, false),
 						action:   plans.Delete,
 					},
 				}),
@@ -550,7 +593,7 @@ func TestRenderers(t *testing.T) {
 			},
 			expected: `
 {
-      - "element_one" = (sensitive value) -> null
+      - "element_one" = (sensitive value)
     }
 `,
 		},
@@ -575,7 +618,7 @@ func TestRenderers(t *testing.T) {
 				renderer: Map(map[string]Change{
 					"element_one": {
 						renderer: Computed(Change{
-							renderer: Primitive(strptr("1"), nil),
+							renderer: Primitive(1.0, nil, cty.Number),
 							action:   plans.Delete,
 						}),
 						action: plans.Update,
@@ -600,7 +643,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Primitive(nil, strptr("1")),
+						renderer: Primitive(nil, 1.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -623,7 +666,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Primitive(strptr("1"), nil),
+						renderer: Primitive(1.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 				}),
@@ -639,7 +682,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Primitive(nil, strptr("1")),
+						renderer: Primitive(nil, 1.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -655,7 +698,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Primitive(strptr("0"), strptr("1")),
+						renderer: Primitive(0.0, 1.0, cty.Number),
 						action:   plans.Update,
 					},
 				}),
@@ -671,11 +714,11 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Primitive(strptr("0"), nil),
+						renderer: Primitive(0.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 					{
-						renderer: Primitive(nil, strptr("1")),
+						renderer: Primitive(nil, 1.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -692,7 +735,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Primitive(strptr("0"), nil),
+						renderer: Primitive(0.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 				}),
@@ -708,7 +751,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Primitive(strptr("0"), strptr("1")),
+						renderer: Primitive(0.0, 1.0, cty.Number),
 						action:   plans.Update,
 					},
 				}),
@@ -725,23 +768,23 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: NestedList([]Change{
 					{
-						renderer: Primitive(strptr("0"), strptr("0")),
+						renderer: Primitive(0.0, 0.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("1"), strptr("1")),
+						renderer: Primitive(1.0, 1.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("2"), strptr("5")),
+						renderer: Primitive(2.0, 5.0, cty.Number),
 						action:   plans.Update,
 					},
 					{
-						renderer: Primitive(strptr("3"), strptr("3")),
+						renderer: Primitive(3.0, 3.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("4"), strptr("4")),
+						renderer: Primitive(4.0, 4.0, cty.Number),
 						action:   plans.NoOp,
 					},
 				}),
@@ -758,23 +801,23 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Primitive(strptr("0"), strptr("0")),
+						renderer: Primitive(0.0, 0.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("1"), strptr("1")),
+						renderer: Primitive(1.0, 1.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("2"), strptr("5")),
+						renderer: Primitive(2.0, 5.0, cty.Number),
 						action:   plans.Update,
 					},
 					{
-						renderer: Primitive(strptr("3"), strptr("3")),
+						renderer: Primitive(3.0, 3.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("4"), strptr("4")),
+						renderer: Primitive(4.0, 4.0, cty.Number),
 						action:   plans.NoOp,
 					},
 				}),
@@ -794,7 +837,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Sensitive(nil, 1, false, true),
+						renderer: Sensitive(nil, 1.0, false, true),
 						action:   plans.Create,
 					},
 				}),
@@ -810,7 +853,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Sensitive(1, nil, true, false),
+						renderer: Sensitive(1.0, nil, true, false),
 						action:   plans.Delete,
 					},
 				}),
@@ -826,7 +869,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Sensitive(nil, 1, false, true),
+						renderer: Sensitive(nil, 1.0, false, true),
 						action:   plans.Update,
 					},
 				}),
@@ -842,7 +885,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: List([]Change{
 					{
-						renderer: Sensitive(1, 1, false, true),
+						renderer: Sensitive(1.0, 1.0, false, true),
 						action:   plans.Update,
 					},
 				}),
@@ -877,7 +920,7 @@ func TestRenderers(t *testing.T) {
 				renderer: List([]Change{
 					{
 						renderer: Computed(Change{
-							renderer: Primitive(strptr("0"), nil),
+							renderer: Primitive(0.0, nil, cty.Number),
 							action:   plans.Delete,
 						}),
 						action: plans.Update,
@@ -902,7 +945,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Primitive(nil, strptr("1")),
+						renderer: Primitive(nil, 1.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -925,7 +968,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Primitive(strptr("1"), nil),
+						renderer: Primitive(1.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 				}),
@@ -941,7 +984,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Primitive(nil, strptr("1")),
+						renderer: Primitive(nil, 1.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -957,7 +1000,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Primitive(strptr("0"), strptr("1")),
+						renderer: Primitive(0.0, 1.0, cty.Number),
 						action:   plans.Update,
 					},
 				}),
@@ -973,11 +1016,11 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Primitive(strptr("0"), nil),
+						renderer: Primitive(0.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 					{
-						renderer: Primitive(nil, strptr("1")),
+						renderer: Primitive(nil, 1.0, cty.Number),
 						action:   plans.Create,
 					},
 				}),
@@ -994,7 +1037,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Primitive(strptr("0"), nil),
+						renderer: Primitive(0.0, nil, cty.Number),
 						action:   plans.Delete,
 					},
 				}),
@@ -1010,7 +1053,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Primitive(strptr("0"), strptr("1")),
+						renderer: Primitive(0.0, 1.0, cty.Number),
 						action:   plans.Update,
 					},
 				}),
@@ -1027,23 +1070,23 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Primitive(strptr("0"), strptr("0")),
+						renderer: Primitive(0.0, 0.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("1"), strptr("1")),
+						renderer: Primitive(1.0, 1.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("2"), strptr("5")),
+						renderer: Primitive(2.0, 5.0, cty.Number),
 						action:   plans.Update,
 					},
 					{
-						renderer: Primitive(strptr("3"), strptr("3")),
+						renderer: Primitive(3.0, 3.0, cty.Number),
 						action:   plans.NoOp,
 					},
 					{
-						renderer: Primitive(strptr("4"), strptr("4")),
+						renderer: Primitive(4.0, 4.0, cty.Number),
 						action:   plans.NoOp,
 					},
 				}),
@@ -1060,7 +1103,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Sensitive(nil, 1, false, true),
+						renderer: Sensitive(nil, 1.0, false, true),
 						action:   plans.Create,
 					},
 				}),
@@ -1076,7 +1119,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Sensitive(1, nil, true, false),
+						renderer: Sensitive(1.0, nil, true, false),
 						action:   plans.Delete,
 					},
 				}),
@@ -1092,7 +1135,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Sensitive(nil, 1, false, true),
+						renderer: Sensitive(nil, 1.0, false, true),
 						action:   plans.Update,
 					},
 				}),
@@ -1108,7 +1151,7 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Set([]Change{
 					{
-						renderer: Sensitive(1, 2, false, true),
+						renderer: Sensitive(1.0, 2.0, false, true),
 						action:   plans.Update,
 					},
 				}),
@@ -1143,7 +1186,7 @@ func TestRenderers(t *testing.T) {
 				renderer: Set([]Change{
 					{
 						renderer: Computed(Change{
-							renderer: Primitive(strptr("0"), nil),
+							renderer: Primitive(0.0, nil, cty.Number),
 							action:   plans.Delete,
 						}),
 						action: plans.Update,
@@ -1159,22 +1202,20 @@ func TestRenderers(t *testing.T) {
 		},
 		"create_empty_block": {
 			change: Change{
-				renderer: Block(nil, nil),
+				renderer: Block(nil, nil, nil),
 				action:   plans.Create,
 			},
-			expected: `
-{
-    }`,
+			expected: "{}",
 		},
 		"create_populated_block": {
 			change: Change{
 				renderer: Block(map[string]Change{
 					"string": {
-						renderer: Primitive(nil, strptr("\"root\"")),
+						renderer: Primitive(nil, "root", cty.String),
 						action:   plans.Create,
 					},
 					"boolean": {
-						renderer: Primitive(nil, strptr("true")),
+						renderer: Primitive(nil, true, cty.Bool),
 						action:   plans.Create,
 					},
 				}, map[string][]Change{
@@ -1182,10 +1223,10 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(nil, strptr("\"one\"")),
+									renderer: Primitive(nil, "one", cty.String),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
@@ -1193,14 +1234,14 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(nil, strptr("\"two\"")),
+									renderer: Primitive(nil, "two", cty.String),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Create,
 			},
 			expected: `
@@ -1221,11 +1262,11 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Block(map[string]Change{
 					"string": {
-						renderer: Primitive(nil, strptr("\"root\"")),
+						renderer: Primitive(nil, "root", cty.String),
 						action:   plans.Create,
 					},
 					"boolean": {
-						renderer: Primitive(nil, strptr("true")),
+						renderer: Primitive(nil, true, cty.Bool),
 						action:   plans.Create,
 					},
 				}, map[string][]Change{
@@ -1233,10 +1274,10 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(nil, strptr("\"one\"")),
+									renderer: Primitive(nil, "one", cty.String),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
@@ -1244,14 +1285,14 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(nil, strptr("\"two\"")),
+									renderer: Primitive(nil, "two", cty.String),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Update,
 			},
 			expected: `
@@ -1272,11 +1313,11 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Block(map[string]Change{
 					"string": {
-						renderer: Primitive(nil, strptr("\"root\"")),
+						renderer: Primitive(nil, "root", cty.String),
 						action:   plans.Create,
 					},
 					"boolean": {
-						renderer: Primitive(strptr("false"), strptr("true")),
+						renderer: Primitive(false, true, cty.Bool),
 						action:   plans.Update,
 					},
 				}, map[string][]Change{
@@ -1284,10 +1325,10 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(nil, strptr("\"one\"")),
+									renderer: Primitive(nil, "one", cty.String),
 									action:   plans.NoOp,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.NoOp,
 						},
 					},
@@ -1295,14 +1336,14 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(nil, strptr("\"two\"")),
+									renderer: Primitive(nil, "two", cty.String),
 									action:   plans.Create,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Create,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Update,
 			},
 			expected: `
@@ -1313,6 +1354,57 @@ func TestRenderers(t *testing.T) {
       + nested_block_two {
           + string = "two"
         }
+
+        # (1 unchanged block hidden)
+    }`,
+		},
+		"update_populated_block_with_sensitive": {
+			change: Change{
+				renderer: Block(map[string]Change{
+					"string": {
+						renderer: Primitive(nil, "root", cty.String),
+						action:   plans.Create,
+					},
+					"boolean": {
+						renderer: Primitive(false, true, cty.Bool),
+						action:   plans.Update,
+					},
+				}, map[string][]Change{
+					"nested_block": {
+						{
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, "one", cty.String),
+									action:   plans.NoOp,
+								},
+							}, nil, nil),
+							action: plans.NoOp,
+						},
+					},
+					"nested_block_two": {
+						{
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Sensitive(nil, "two", false, true),
+									action:   plans.Create,
+								},
+							}, nil, nil),
+							action: plans.Create,
+						},
+					},
+				}, nil),
+				action: plans.Update,
+			},
+			expected: `
+{
+      ~ boolean = false -> true
+      + string  = "root"
+
+      + nested_block_two {
+          # At least one attribute in this block is (or was) sensitive,
+          # so its contents will not be displayed
+        }
+
         # (1 unchanged block hidden)
     }`,
 		},
@@ -1320,11 +1412,11 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Block(map[string]Change{
 					"string": {
-						renderer: Primitive(strptr("\"root\""), nil),
+						renderer: Primitive("root", nil, cty.String),
 						action:   plans.Delete,
 					},
 					"boolean": {
-						renderer: Primitive(strptr("true"), nil),
+						renderer: Primitive(true, nil, cty.Bool),
 						action:   plans.Delete,
 					},
 				}, map[string][]Change{
@@ -1332,10 +1424,10 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(strptr("\"one\""), nil),
+									renderer: Primitive("one", nil, cty.String),
 									action:   plans.Delete,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Delete,
 						},
 					},
@@ -1343,14 +1435,14 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(strptr("\"two\""), nil),
+									renderer: Primitive("two", nil, cty.String),
 									action:   plans.Delete,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Delete,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Update,
 			},
 			expected: `
@@ -1371,11 +1463,11 @@ func TestRenderers(t *testing.T) {
 			change: Change{
 				renderer: Block(map[string]Change{
 					"string": {
-						renderer: Primitive(strptr("\"root\""), nil),
+						renderer: Primitive("root", nil, cty.String),
 						action:   plans.Delete,
 					},
 					"boolean": {
-						renderer: Primitive(strptr("true"), nil),
+						renderer: Primitive(true, nil, cty.Bool),
 						action:   plans.Delete,
 					},
 				}, map[string][]Change{
@@ -1383,10 +1475,10 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(strptr("\"one\""), nil),
+									renderer: Primitive("one", nil, cty.String),
 									action:   plans.Delete,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Delete,
 						},
 					},
@@ -1394,14 +1486,14 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(strptr("\"two\""), nil),
+									renderer: Primitive("two", nil, cty.String),
 									action:   plans.Delete,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.Delete,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.Delete,
 			},
 			expected: `
@@ -1420,22 +1512,20 @@ func TestRenderers(t *testing.T) {
 		},
 		"delete_empty_block": {
 			change: Change{
-				renderer: Block(nil, nil),
+				renderer: Block(nil, nil, nil),
 				action:   plans.Delete,
 			},
-			expected: `
-{
-    }`,
+			expected: "{}",
 		},
 		"block_always_includes_important_attributes": {
 			change: Change{
 				renderer: Block(map[string]Change{
 					"id": {
-						renderer: Primitive(strptr("\"root\""), strptr("\"root\"")),
+						renderer: Primitive("root", "root", cty.String),
 						action:   plans.NoOp,
 					},
 					"boolean": {
-						renderer: Primitive(strptr("false"), strptr("false")),
+						renderer: Primitive(false, false, cty.Bool),
 						action:   plans.NoOp,
 					},
 				}, map[string][]Change{
@@ -1443,10 +1533,10 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(strptr("\"one\""), strptr("\"one\"")),
+									renderer: Primitive("one", "one", cty.String),
 									action:   plans.NoOp,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.NoOp,
 						},
 					},
@@ -1454,21 +1544,165 @@ func TestRenderers(t *testing.T) {
 						{
 							renderer: Block(map[string]Change{
 								"string": {
-									renderer: Primitive(strptr("\"two\""), strptr("\"two\"")),
+									renderer: Primitive("two", "two", cty.String),
 									action:   plans.NoOp,
 								},
-							}, nil),
+							}, nil, nil),
 							action: plans.NoOp,
 						},
 					},
-				}),
+				}, nil),
 				action: plans.NoOp,
 			},
 			expected: `
 {
         id      = "root"
         # (1 unchanged attribute hidden)
+
         # (2 unchanged blocks hidden)
+    }`,
+		},
+		"create_map_block": {
+			change: Change{
+				renderer: Block(map[string]Change{
+					"string": {
+						renderer: Primitive(nil, "root", cty.String),
+						action:   plans.Create,
+					},
+					"boolean": {
+						renderer: Primitive(nil, true, cty.Bool),
+						action:   plans.Create,
+					},
+				}, nil, map[string]map[string]Change{
+					"nested_block": {
+						"nested_block_entry": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, "one", cty.String),
+									action:   plans.Create,
+								},
+							}, nil, nil),
+							action: plans.Create,
+						},
+						"nested_block_two_entry": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, "two", cty.String),
+									action:   plans.Create,
+								},
+							}, nil, nil),
+							action: plans.Create,
+						},
+					},
+				}),
+				action: plans.Create,
+			},
+			expected: `
+{
+      + boolean = true
+      + string  = "root"
+
+      + nested_block "nested_block_entry" {
+          + string = "one"
+        }
+      + nested_block "nested_block_two_entry" {
+          + string = "two"
+        }
+    }`,
+		},
+		"update_map_block": {
+			change: Change{
+				renderer: Block(map[string]Change{
+					"string": {
+						renderer: Primitive(nil, "root", cty.String),
+						action:   plans.Create,
+					},
+					"boolean": {
+						renderer: Primitive(false, true, cty.Bool),
+						action:   plans.Update,
+					},
+				}, nil, map[string]map[string]Change{
+					"nested_block": {
+						"nested_block_entry_one": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, "one", cty.String),
+									action:   plans.NoOp,
+								},
+							}, nil, nil),
+							action: plans.NoOp,
+						},
+						"nested_block_entry_two": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive(nil, "two", cty.String),
+									action:   plans.Create,
+								},
+							}, nil, nil),
+							action: plans.Create,
+						},
+					},
+				}),
+				action: plans.Update,
+			},
+			expected: `
+{
+      ~ boolean = false -> true
+      + string  = "root"
+
+      + nested_block "nested_block_entry_two" {
+          + string = "two"
+        }
+
+        # (1 unchanged block hidden)
+    }`,
+		},
+		"delete_map_block": {
+			change: Change{
+				renderer: Block(map[string]Change{
+					"string": {
+						renderer: Primitive("root", nil, cty.String),
+						action:   plans.Delete,
+					},
+					"boolean": {
+						renderer: Primitive(true, nil, cty.Bool),
+						action:   plans.Delete,
+					},
+				}, nil, map[string]map[string]Change{
+					"nested_block": {
+						"nested_block_entry_one": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive("one", nil, cty.String),
+									action:   plans.Delete,
+								},
+							}, nil, nil),
+							action: plans.Delete,
+						},
+						"nested_block_entry_two": {
+							renderer: Block(map[string]Change{
+								"string": {
+									renderer: Primitive("two", nil, cty.String),
+									action:   plans.Delete,
+								},
+							}, nil, nil),
+							action: plans.Delete,
+						},
+					},
+				}),
+				action: plans.Delete,
+			},
+			expected: `
+{
+      - boolean = true -> null
+      - string  = "root" -> null
+
+      - nested_block "nested_block_entry_one" {
+          - string = "one" -> null
+        }
+      - nested_block "nested_block_entry_two" {
+          - string = "two" -> null
+        }
     }`,
 		},
 		"output_map_to_list": {
@@ -1476,11 +1710,11 @@ func TestRenderers(t *testing.T) {
 				renderer: TypeChange(Change{
 					renderer: Map(map[string]Change{
 						"element_one": {
-							renderer: Primitive(strptr("0"), nil),
+							renderer: Primitive(0.0, nil, cty.Number),
 							action:   plans.Delete,
 						},
 						"element_two": {
-							renderer: Primitive(strptr("1"), nil),
+							renderer: Primitive(1.0, nil, cty.Number),
 							action:   plans.Delete,
 						},
 					}),
@@ -1488,11 +1722,11 @@ func TestRenderers(t *testing.T) {
 				}, Change{
 					renderer: List([]Change{
 						{
-							renderer: Primitive(nil, strptr("0")),
+							renderer: Primitive(nil, 0.0, cty.Number),
 							action:   plans.Create,
 						},
 						{
-							renderer: Primitive(nil, strptr("1")),
+							renderer: Primitive(nil, 1.0, cty.Number),
 							action:   plans.Create,
 						},
 					}),
@@ -1513,7 +1747,7 @@ func TestRenderers(t *testing.T) {
 	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			expected := strings.TrimSpace(tc.expected)
-			actual := colorize.Color(tc.change.Render(0, tc.opts))
+			actual := colorize.Color(tc.change.Render(0.0, tc.opts))
 			if diff := cmp.Diff(expected, actual); len(diff) > 0 {
 				t.Fatalf("\nexpected:\n%s\nactual:\n%s\ndiff:\n%s\n", expected, actual, diff)
 			}

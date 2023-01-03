@@ -67,11 +67,16 @@ func (renderer mapRenderer) Render(change Change, indent int, opts RenderOpts) s
 
 		// Only show commas between elements for objects.
 		comma := ""
-		if _, ok := element.renderer.(objectRenderer); ok {
+		if _, ok := element.renderer.(*objectRenderer); ok {
 			comma = ","
+			elementOpts.overrideNullSuffix = true
 		}
 
-		buf.WriteString(fmt.Sprintf("%s%s \"%s\"%-*s = %s%s\n", change.indent(indent+1), format.DiffActionSymbol(element.action), key, renderer.maximumKeyLen-len(key), "", element.Render(indent+1, elementOpts), comma))
+		if element.action == plans.NoOp {
+			buf.WriteString(fmt.Sprintf("%s%s \"%s\"%-*s = %s%s\n", change.indent(indent+1), element.emptySymbol(), key, renderer.maximumKeyLen-len(key), "", element.Render(indent+1, elementOpts), comma))
+		} else {
+			buf.WriteString(fmt.Sprintf("%s%s \"%s\"%-*s = %s%s\n", change.indent(indent+1), format.DiffActionSymbol(element.action), key, renderer.maximumKeyLen-len(key), "", element.Render(indent+1, elementOpts), comma))
+		}
 	}
 
 	if unchangedElements > 0 {
@@ -80,4 +85,13 @@ func (renderer mapRenderer) Render(change Change, indent int, opts RenderOpts) s
 
 	buf.WriteString(fmt.Sprintf("%s%s }%s", change.indent(indent), change.emptySymbol(), change.nullSuffix(opts.overrideNullSuffix)))
 	return buf.String()
+}
+
+func (renderer mapRenderer) ContainsSensitive() bool {
+	for _, element := range renderer.elements {
+		if element.ContainsSensitive() {
+			return true
+		}
+	}
+	return false
 }

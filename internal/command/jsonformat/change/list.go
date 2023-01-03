@@ -80,3 +80,12 @@ func (renderer listRenderer) Render(change Change, indent int, opts RenderOpts) 
 	buf.WriteString(fmt.Sprintf("%s%s ]%s", change.indent(indent), change.emptySymbol(), change.nullSuffix(opts.overrideNullSuffix)))
 	return buf.String()
 }
+
+func (renderer listRenderer) ContainsSensitive() bool {
+	for _, element := range renderer.elements {
+		if element.ContainsSensitive() {
+			return true
+		}
+	}
+	return false
+}

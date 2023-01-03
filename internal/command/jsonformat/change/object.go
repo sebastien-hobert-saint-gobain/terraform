@@ -3,38 +3,22 @@ package change
 import (
 	"bytes"
 	"fmt"
+	"github.com/hashicorp/terraform/internal/command/format"
 	"sort"
 
-	"github.com/hashicorp/terraform/internal/command/format"
 	"github.com/hashicorp/terraform/internal/plans"
 )
 
 func Object(attributes map[string]Change) Renderer {
-	maximumKeyLen := 0
-	for key := range attributes {
-		if maximumKeyLen < len(key) {
-			maximumKeyLen = len(key)
-		}
-	}
-
 	return &objectRenderer{
 		attributes:         attributes,
-		maximumKeyLen:      maximumKeyLen,
 		overrideNullSuffix: true,
 	}
 }
 
 func NestedObject(attributes map[string]Change) Renderer {
-	maximumKeyLen := 0
-	for key := range attributes {
-		if maximumKeyLen < len(key) {
-			maximumKeyLen = len(key)
-		}
-	}
-
 	return &objectRenderer{
 		attributes:         attributes,
-		maximumKeyLen:      maximumKeyLen,
 		overrideNullSuffix: false,
 	}
 }
@@ -43,7 +27,6 @@ type objectRenderer struct {
 	NoWarningsRenderer
 
 	attributes         map[string]Change
-	maximumKeyLen      int
 	overrideNullSuffix bool
 }
 
@@ -55,9 +38,17 @@ func (renderer objectRenderer) Render(change Change, indent int, opts RenderOpts
 	attributeOpts := opts.Clone()
 	attributeOpts.overrideNullSuffix = renderer.overrideNullSuffix
 
+	maximumKeyLen := 0
+	escapedKeys := make(map[string]string)
 	var keys []string
 	for key := range renderer.attributes {
 		keys = append(keys, key)
+
+		esc := change.escapeAttributeName(key)
+		if len(esc) > maximumKeyLen {
+			maximumKeyLen = len(esc)
+		}
+		escapedKeys[key] = esc
 	}
 	sort.Strings(keys)
 
@@ -67,7 +58,7 @@ func (renderer objectRenderer) Render(change Change, indent int, opts RenderOpts
 	for _, key := range keys {
 		attribute := renderer.attributes[key]
 
-		if attribute.action == plans.NoOp && !opts.showUnchangedChildren {
+		if !importantAttribute(key) && attribute.action == plans.NoOp && !opts.showUnchangedChildren {
 			// Don't render NoOp operations when we are compact display.
 			unchangedAttributes++
 			continue
@@ -76,7 +67,12 @@ func (renderer objectRenderer) Render(change Change, indent int, opts RenderOpts
 		for _, warning := range attribute.Warnings(indent + 1) {
 			buf.WriteString(fmt.Sprintf("%s%s\n", change.indent(indent+1), warning))
 		}
-		buf.WriteString(fmt.Sprintf("%s%s %-*s = %s\n", change.indent(indent+1), format.DiffActionSymbol(attribute.action), renderer.maximumKeyLen, key, attribute.Render(indent+1, attributeOpts)))
+
+		if attribute.action == plans.NoOp {
+			buf.WriteString(fmt.Sprintf("%s%s %-*s = %s\n", change.indent(indent+1), change.emptySymbol(), maximumKeyLen, escapedKeys[key], attribute.Render(indent+1, attributeOpts)))
+		} else {
+			buf.WriteString(fmt.Sprintf("%s%s %-*s = %s\n", change.indent(indent+1), format.DiffActionSymbol(attribute.action), maximumKeyLen, escapedKeys[key], attribute.Render(indent+1, attributeOpts)))
+		}
 	}
 
 	if unchangedAttributes > 0 {
@@ -85,4 +81,13 @@ func (renderer objectRenderer) Render(change Change, indent int, opts RenderOpts
 
 	buf.WriteString(fmt.Sprintf("%s%s }%s", change.indent(indent), change.emptySymbol(), change.nullSuffix(opts.overrideNullSuffix)))
 	return buf.String()
+}
+
+func (renderer objectRenderer) ContainsSensitive() bool {
+	for _, attribute := range renderer.attributes {
+		if attribute.ContainsSensitive() {
+			return true
+		}
+	}
+	return false
 }

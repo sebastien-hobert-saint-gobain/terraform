@@ -20,7 +20,7 @@ import (
 // as jsonplan and jsonprovider).
 //
 // A Value can be converted into a change.Change, ready for rendering, with the
-// computeChangeForAttribute, ComputeChangeForOutput, and computeChangeForBlock
+// computeChangeForAttribute, computeChangeForDynamicType, and computeChangeForBlock
 // functions.
 type Value struct {
 
@@ -132,10 +132,10 @@ func (v Value) replacePath() bool {
 }
 
 func (v Value) calculateChange() plans.Action {
-	if (v.Before == nil && !v.BeforeExplicit) && (v.After != nil || v.AfterExplicit) {
+	if (v.Before == nil && !v.BeforeExplicit) && (v.After != nil || v.AfterExplicit || v.isUnknown()) {
 		return plans.Create
 	}
-	if (v.After == nil && !v.AfterExplicit) && (v.Before != nil || v.BeforeExplicit) {
+	if (v.After == nil && !v.AfterExplicit) && (v.Before != nil || v.BeforeExplicit) && !v.isUnknown() {
 		return plans.Delete
 	}
 

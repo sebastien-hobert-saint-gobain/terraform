@@ -36,7 +36,7 @@ func (v Value) asMap() ValueMap {
 	}
 }
 
-func (m ValueMap) getChild(key string) Value {
+func (m ValueMap) getChild(key string, propagateReplace bool) Value {
 	before, beforeExplicit := getFromGenericMap(m.Before, key)
 	after, afterExplicit := getFromGenericMap(m.After, key)
 	unknown, _ := getFromGenericMap(m.Unknown, key)
@@ -51,16 +51,24 @@ func (m ValueMap) getChild(key string) Value {
 		Unknown:         unknown,
 		BeforeSensitive: beforeSensitive,
 		AfterSensitive:  afterSensitive,
-		ReplacePaths:    m.processReplacePaths(key),
+		ReplacePaths:    m.processReplacePaths(key, propagateReplace),
 	}
 }
 
-func (m ValueMap) processReplacePaths(key string) []interface{} {
+func (m ValueMap) processReplacePaths(key string, propagateReplace bool) []interface{} {
 	var ret []interface{}
 	for _, p := range m.ReplacePaths {
 		path := p.([]interface{})
 
 		if len(path) == 0 {
+			// This means that the current value is causing a replacement but
+			// not its children. Normally, we'd skip this but nested objects
+			// within maps display don't display the replace suffix but pass it
+			// onto their children.
+			if propagateReplace {
+				ret = append(ret, path)
+			}
+
 			// This means that the current value is causing a replacement but
 			// not its children, so we skip as we are returning the child's
 			// value.

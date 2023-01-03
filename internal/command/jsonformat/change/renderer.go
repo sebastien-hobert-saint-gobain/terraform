@@ -8,6 +8,7 @@ package change
 type Renderer interface {
 	Render(change Change, indent int, opts RenderOpts) string
 	Warnings(change Change, indent int) []string
+	ContainsSensitive() bool
 }
 
 // NoWarningsRenderer defines a Warnings function that returns an empty list of
@@ -40,12 +41,21 @@ type RenderOpts struct {
 	// This is generally decided by the parent change (mainly lists) and so is
 	// passed in as a private option.
 	showUnchangedChildren bool
+
+	// elideSensitiveBlocks tells blocks to render no attributes if at least
+	// one is sensitive.
+	//
+	// This should be true for all nested blocks, but not the root resource
+	// block, so this is handled as a private option internally.
+	elideSensitiveBlocks bool
 }
 
 // Clone returns a new RenderOpts object, that matches the original but can be
 // edited without changing the original.
 func (opts RenderOpts) Clone() RenderOpts {
 	return RenderOpts{
-		overrideNullSuffix: opts.overrideNullSuffix,
+		overrideNullSuffix:    opts.overrideNullSuffix,
+		showUnchangedChildren: opts.showUnchangedChildren,
+		elideSensitiveBlocks:  opts.elideSensitiveBlocks,
 	}
 }

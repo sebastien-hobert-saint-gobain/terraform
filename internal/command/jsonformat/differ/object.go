@@ -39,7 +39,7 @@ func (v Value) processObject(keys []string, getAttribute func(string) interface{
 	currentAction := v.getDefaultActionForIteration()
 	for _, key := range keys {
 		attribute := getAttribute(key)
-		attributeValue := mapValue.getChild(key)
+		attributeValue := mapValue.getChild(key, false)
 
 		// We always assume changes to object are implicit.
 		attributeValue.BeforeExplicit = false

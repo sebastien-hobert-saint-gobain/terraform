@@ -2,6 +2,7 @@ package change
 
 import (
 	"fmt"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"strings"
 
 	"github.com/hashicorp/terraform/internal/plans"
@@ -61,6 +62,12 @@ func (change Change) Warnings(indent int) []string {
 	return change.renderer.Warnings(change, indent)
 }
 
+// ContainsSensitive returns true if this Change or any of its children are
+// sensitive.
+func (change Change) ContainsSensitive() bool {
+	return change.renderer.ContainsSensitive()
+}
+
 // GetAction returns the plans.Action that this change describes.
 func (change Change) GetAction() plans.Action {
 	return change.action
@@ -104,4 +111,11 @@ func (change Change) unchanged(keyword string, count int) string {
 		return fmt.Sprintf("[dark_gray]# (%d unchanged %s hidden)[reset]", count, keyword)
 	}
 	return fmt.Sprintf("[dark_gray]# (%d unchanged %ss hidden)[reset]", count, keyword)
+}
+
+func (change Change) escapeAttributeName(name string) string {
+	if !hclsyntax.ValidIdentifier(name) {
+		return fmt.Sprintf("%q", name)
+	}
+	return name
 }

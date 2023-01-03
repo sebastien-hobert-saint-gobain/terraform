@@ -32,8 +32,8 @@ func (v Value) computeChangeForNestedAttribute(attribute *jsonprovider.NestedTyp
 }
 
 func (v Value) computeChangeForType(ctyType cty.Type) change.Change {
-	if ctyType == cty.NilType {
-		return v.ComputeChangeForOutput()
+	if ctyType == cty.NilType || ctyType == cty.DynamicPseudoType {
+		return v.computeChangeForDynamicType()
 	}
 
 	switch {
@@ -45,11 +45,10 @@ func (v Value) computeChangeForType(ctyType cty.Type) change.Change {
 		return v.computeAttributeChangeAsMap(ctyType.ElementType())
 	case ctyType.IsListType():
 		return v.computeAttributeChangeAsList(ctyType.ElementType())
+	case ctyType.IsTupleType():
+		return v.computeAttributeChangeAsTuple(ctyType.TupleElementTypes())
 	case ctyType.IsSetType():
 		return v.computeAttributeChangeAsSet(ctyType.ElementType())
-	case ctyType.IsTupleType():
-		// TODO()
-		return change.New(nil, plans.NoOp, false)
 	case ctyType == cty.DynamicPseudoType:
 		return change.New(nil, plans.NoOp, false)
 	default:

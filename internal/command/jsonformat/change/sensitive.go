@@ -23,7 +23,7 @@ type sensitiveRenderer struct {
 }
 
 func (renderer sensitiveRenderer) Render(change Change, indent int, opts RenderOpts) string {
-	return fmt.Sprintf("(sensitive value)%s%s", change.nullSuffix(opts.overrideNullSuffix), change.forcesReplacement())
+	return fmt.Sprintf("(sensitive value)%s", change.forcesReplacement())
 }
 
 func (renderer sensitiveRenderer) Warnings(change Change, indent int) []string {
@@ -45,4 +45,8 @@ func (renderer sensitiveRenderer) Warnings(change Change, indent int) []string {
 		return []string{fmt.Sprintf("%s The value is unchanged.", warning)}
 	}
 	return []string{warning}
+}
+
+func (renderer sensitiveRenderer) ContainsSensitive() bool {
+	return true
 }

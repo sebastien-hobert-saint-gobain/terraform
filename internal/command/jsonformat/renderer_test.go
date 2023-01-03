@@ -1748,8 +1748,7 @@ func TestResourceChange_primitiveTuple(t *testing.T) {
       ~ tuple_field = [
             # (1 unchanged element hidden)
             "bbbb",
-          - "dddd",
-          + "cccc",
+          ~ "dddd" -> "cccc",
             "eeee",
             # (1 unchanged element hidden)
         ]
@@ -2094,7 +2093,7 @@ func TestResourceChange_primitiveSet(t *testing.T) {
       ~ id        = "i-02ae66f368e8518a9" -> (known after apply)
       ~ set_field = [
           - "bbbb",
-          ~ (known after apply),
+          + (known after apply),
             # (1 unchanged element hidden)
         ]
         # (1 unchanged attribute hidden)
@@ -3169,23 +3168,23 @@ func TestResourceChange_nestedSet(t *testing.T) {
   ~ resource "test_instance" "example" {
       ~ ami   = "ami-BEFORE" -> "ami-AFTER"
       ~ disks = [
+          - {
+              - mount_point = "/var/diska" -> null
+            },
           + {
               + mount_point = "/var/diska"
               + size        = "50GB"
-            },
-          - {
-              - mount_point = "/var/diska" -> null
             },
             # (1 unchanged element hidden)
         ]
         id    = "i-02ae66f368e8518a9"
 
+      - root_block_device {
+          - volume_type = "gp2" -> null
+        }
       + root_block_device {
           + new_field   = "new_value"
           + volume_type = "gp2"
-        }
-      - root_block_device {
-          - volume_type = "gp2" -> null
         }
     }`,
 		},
@@ -3243,11 +3242,11 @@ func TestResourceChange_nestedSet(t *testing.T) {
         ]
         id    = "i-02ae66f368e8518a9"
 
-      + root_block_device { # forces replacement
-          + volume_type = "different"
-        }
       - root_block_device { # forces replacement
           - volume_type = "gp2" -> null
+        }
+      + root_block_device { # forces replacement
+          + volume_type = "different"
         }
     }`,
 		},
@@ -3331,8 +3330,7 @@ func TestResourceChange_nestedSet(t *testing.T) {
 			ExpectedOutput: `  # test_instance.example will be updated in-place
   ~ resource "test_instance" "example" {
       ~ ami   = "ami-BEFORE" -> "ami-AFTER"
-      + disks = [
-        ]
+      + disks = []
         id    = "i-02ae66f368e8518a9"
     }`,
 		},
@@ -3382,12 +3380,12 @@ func TestResourceChange_nestedSet(t *testing.T) {
         ]
         id    = "i-02ae66f368e8518a9"
 
+      - root_block_device {
+          - volume_type = "gp2" -> null
+        }
       + root_block_device {
           + new_field   = "new_value"
           + volume_type = "gp2"
-        }
-      - root_block_device {
-          - volume_type = "gp2" -> null
         }
     }`,
 		},

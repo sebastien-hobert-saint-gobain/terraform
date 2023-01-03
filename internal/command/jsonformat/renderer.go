@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform/internal/command/jsonformat/differ"
 	"github.com/hashicorp/terraform/internal/plans"
 	"github.com/mitchellh/colorstring"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/terraform/internal/command/jsonplan"
 	"github.com/hashicorp/terraform/internal/command/jsonprovider"
@@ -50,7 +51,7 @@ func (r Renderer) renderChange(resourceChange jsonplan.ResourceChange, providers
 	action := jsonplan.UnmarshalActions(resourceChange.Change.Actions)
 	schema := providers[resourceChange.ProviderName].ResourceSchemas[resourceChange.Type]
 
-	if action == plans.NoOp {
+	if action == plans.NoOp && (len(resourceChange.PreviousAddress) == 0 || resourceChange.PreviousAddress == resourceChange.Address) {
 		return "", false
 	}
 
@@ -58,7 +59,13 @@ func (r Renderer) renderChange(resourceChange jsonplan.ResourceChange, providers
 
 	var buf bytes.Buffer
 	buf.WriteString(r.Colorize.Color(r.resourceChangeComment(resourceChange, action, changeCause)))
-	buf.WriteString(r.Colorize.Color(fmt.Sprintf("%s %s %s", format.DiffActionSymbol(action), r.resourceChangeHeader(resourceChange), res.Render(0, change.RenderOpts{}))))
+
+	if action == plans.NoOp {
+		buf.WriteString(r.Colorize.Color(fmt.Sprintf("    %s %s", r.resourceChangeHeader(resourceChange), res.Render(0, change.RenderOpts{}))))
+	} else {
+		buf.WriteString(r.Colorize.Color(fmt.Sprintf("%s %s %s", format.DiffActionSymbol(action), r.resourceChangeHeader(resourceChange), res.Render(0, change.RenderOpts{}))))
+	}
+
 	return buf.String(), true
 }
 
@@ -123,10 +130,6 @@ func (r Renderer) RenderPlan(plan Plan) {
 	}
 
 	for _, resource := range plan.ResourceChanges {
-		if len(resource.PreviousAddress) > 0 && resource.PreviousAddress != resource.Address {
-			continue
-		}
-
 		diff, render := r.renderChange(resource, plan.ProviderSchemas, proposedChange)
 		if render {
 			fmt.Fprintln(r.Streams.Stdout.File)
@@ -151,7 +154,7 @@ func (r Renderer) RenderPlan(plan Plan) {
 			}
 			willPrintOutputChanges = true
 
-			res := differ.ValueFromJsonChange(output).ComputeChangeForOutput()
+			res := differ.ValueFromJsonChange(output).ComputeChange(cty.NilType)
 			fmt.Fprintln(r.Streams.Stdout.File, r.Colorize.Color(fmt.Sprintf("%s %s = %s", format.DiffActionSymbol(action), key, res.Render(0, change.RenderOpts{}))))
 		}
 	}
@@ -212,7 +215,7 @@ func (r Renderer) resourceChangeComment(resource jsonplan.ResourceChange, action
 		// in all cases, for easier scanning of this often-risky action.
 		switch resource.ActionReason {
 		case jsonplan.ResourceInstanceDeleteBecauseNoResourceConfig:
-			buf.WriteString(fmt.Sprintf("\n  # (because %s is not in configuration)", resource.Address))
+			buf.WriteString(fmt.Sprintf("\n  # (because %s.%s is not in configuration)", resource.Type, resource.Name))
 		case jsonplan.ResourceInstanceDeleteBecauseNoMoveTarget:
 			buf.WriteString(fmt.Sprintf("\n  # (because %s was moved to %s, which is not in configuration)", resource.PreviousAddress, resource.Address))
 		case jsonplan.ResourceInstanceDeleteBecauseNoModule:
