@@ -6,7 +6,7 @@ import (
 
 type ProcessChild func(beforeIx, afterIx int)
 
-func Process[T any](before, after []T, isObjType bool, process ProcessChild) {
+func Process[T any](before, after []T, isObjType func(item T) bool, process ProcessChild) {
 	lcs := lcs(before, after)
 	var beforeIx, afterIx, lcsIx int
 	for beforeIx < len(before) || afterIx < len(after) || lcsIx < len(lcs) {
@@ -14,7 +14,7 @@ func Process[T any](before, after []T, isObjType bool, process ProcessChild) {
 		// longest common subsequence. We are going to just say that all of
 		// these have been deleted.
 		for beforeIx < len(before) && (lcsIx >= len(lcs) || !reflect.DeepEqual(before[beforeIx], lcs[lcsIx])) {
-			isObjectDiff := isObjType && afterIx < len(after) && (lcsIx >= len(lcs) || !reflect.DeepEqual(after[afterIx], lcs[lcsIx]))
+			isObjectDiff := isObjType(before[beforeIx]) && afterIx < len(after) && isObjType(after[afterIx]) && (lcsIx >= len(lcs) || !reflect.DeepEqual(after[afterIx], lcs[lcsIx]))
 			if isObjectDiff {
 				process(beforeIx, afterIx)
 				beforeIx++
@@ -43,9 +43,9 @@ func Process[T any](before, after []T, isObjType bool, process ProcessChild) {
 	}
 }
 
-func lcs[T any](xs, ys []T) []interface{} {
+func lcs[T any](xs, ys []T) []T {
 	if len(xs) == 0 || len(ys) == 0 {
-		return make([]interface{}, 0)
+		return make([]T, 0)
 	}
 
 	c := make([]int, len(xs)*len(ys))
@@ -88,7 +88,7 @@ func lcs[T any](xs, ys []T) []interface{} {
 	}
 
 	// The bottom right cell tells us how long our longest sequence will be
-	seq := make([]interface{}, c[len(c)-1])
+	seq := make([]T, c[len(c)-1])
 
 	// Now we will walk back from the bottom right cell, finding again all
 	// of the equal pairs to construct our sequence.

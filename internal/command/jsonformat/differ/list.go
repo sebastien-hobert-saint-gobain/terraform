@@ -1,7 +1,6 @@
 package differ
 
 import (
-	"github.com/hashicorp/terraform/internal/command/jsonformat/list"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/terraform/internal/command/jsonformat/change"
@@ -10,18 +9,13 @@ import (
 )
 
 func (v Value) computeAttributeChangeAsList(elementType cty.Type) change.Change {
-	var elements []change.Change
-	current := v.getDefaultActionForIteration()
-
 	sliceValue := v.asSlice()
-
-	list.Process(sliceValue.Before, sliceValue.After, elementType.IsObjectType(), func(beforeIx, afterIx int) {
-		value := sliceValue.getChild(beforeIx, afterIx, false)
-		element := value.ComputeChange(elementType)
-		elements = append(elements, element)
-		current = compareActions(current, element.GetAction())
+	elements, action := change.ProcessList(sliceValue.Before, sliceValue.After, func(_ interface{}) bool {
+		return elementType.IsObjectType()
+	}, func(beforeIx, afterIx int) change.Change {
+		return sliceValue.getChild(beforeIx, afterIx, false).ComputeChange(elementType)
 	})
-	return change.New(change.List(elements), current, v.replacePath())
+	return change.New(change.List(elements), action, v.replacePath())
 }
 
 func (v Value) computeAttributeChangeAsNestedList(attributes map[string]*jsonprovider.Attribute) change.Change {
