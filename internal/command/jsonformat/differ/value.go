@@ -96,7 +96,7 @@ func ValueFromJsonChange(change jsonplan.Change) Value {
 // It can accept blocks, attributes, go-cty types, and outputs, and will route
 // the request to the appropriate function.
 func (v Value) ComputeChange(changeType interface{}) change.Change {
-	if sensitive, ok := v.checkForSensitive(); ok {
+	if sensitive, ok := v.checkForSensitive(changeType); ok {
 		return sensitive
 	}
 
